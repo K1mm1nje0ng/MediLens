@@ -44,7 +44,6 @@ def preprocess_engraved(image, mask):
     final_image = cv2.bitwise_and(opened, opened, mask=mask)
     return cv2.bitwise_not(final_image)
 
-
 def preprocess_printed(image, mask):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     denoised = cv2.medianBlur(gray, 5)

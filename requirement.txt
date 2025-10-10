@@ -5,13 +5,12 @@ Flask==2.3.3
 Flask-Cors==6.0.1
 
 # --- AI & Machine Learning ---
-tensorflow==2.19.0
+tensorflow==2.20.0
 ultralytics==8.3.90
-scikit-learn==1.5.1
 
 # --- Image Processing & Data Handling ---
 opencv-python==4.11.0.86
-numpy==1.26.4
+numpy==2.1.1
 Pillow==10.4.0
 
 # --- OCR (Optical Character Recognition) ---

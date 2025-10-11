@@ -5,6 +5,7 @@ import numpy as np
 
 
 def remove_background(image):
+    """이미지에서 배경을 제거하고 알약 마스크를 생성합니다."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -27,40 +28,26 @@ def remove_background(image):
     return result, mask
 
 
-def preprocess_engraved(image, mask):
+def preprocess_for_tesseract(image, mask):
+    """
+    ✨ [최종 해결책] 모폴로지 그라디언트(Morphological Gradient)를 사용하여
+    글자의 '외곽선'만 정확히 추출, Tesseract의 정확도를 극대화합니다.
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+
+    # 1. CLAHE를 적용하여 이미지의 국소적 명암 대비를 향상시킵니다.
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    clahe_img = clahe.apply(denoised)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 7))
-    blackhat = cv2.morphologyEx(clahe_img, cv2.MORPH_BLACKHAT, kernel)
-    _, thresholded = cv2.threshold(blackhat, 10, 255, cv2.THRESH_BINARY)
+    gray_enhanced = clahe.apply(gray)
 
-    # --- [오류 수정] cv2.MORPH_OPEN 인자를 추가했습니다. ---
-    opening_kernel = np.ones((3, 3), np.uint8)
-    opened = cv2.morphologyEx(thresholded, cv2.MORPH_OPEN, opening_kernel, iterations=1)
-    # ---------------------------------------------------
+    # 2. [핵심] 모폴로지 그라디언트 연산을 적용하여 글자의 외곽선을 추출합니다.
+    kernel = np.ones((2, 2), np.uint8)
+    gradient = cv2.morphologyEx(gray_enhanced, cv2.MORPH_GRADIENT, kernel)
 
-    final_image = cv2.bitwise_and(opened, opened, mask=mask)
-    return cv2.bitwise_not(final_image)
+    # 3. Otsu의 이진화로 최적의 임계값을 찾아 외곽선만 깔끔하게 추출합니다.
+    _, binary = cv2.threshold(gradient, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-def preprocess_printed(image, mask):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    denoised = cv2.medianBlur(gray, 5)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    clahe_img = clahe.apply(denoised)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 7))
-    tophat = cv2.morphologyEx(clahe_img, cv2.MORPH_TOPHAT, kernel)
-    _, thresholded = cv2.threshold(tophat, 15, 255, cv2.THRESH_BINARY)
-    dilated = cv2.dilate(thresholded, np.ones((3, 3), np.uint8), iterations=1)
-    final_image = cv2.bitwise_and(dilated, dilated, mask=mask)
-    return cv2.bitwise_not(final_image)
+    # 4. 마스크를 적용하여 알약 영역 밖의 노이즈를 최종적으로 제거합니다.
+    final_image = cv2.bitwise_and(binary, binary, mask=mask)
 
-
-def preprocess_adaptive(image, mask):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-    edges = cv2.Canny(blurred, 50, 150)
-    dilated_edges = cv2.dilate(edges, np.ones((2, 2), np.uint8), iterations=1)
-    final_image = cv2.bitwise_and(dilated_edges, dilated_edges, mask=mask)
+    # Tesseract는 '흰 배경, 검은 글씨'를 더 잘 인식하므로 이미지를 반전시킵니다.
     return cv2.bitwise_not(final_image)

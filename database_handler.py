@@ -41,12 +41,12 @@ def calculate_score(row, shape, colors, imprint):
 
     # 1. 모양 점수: 모양이 일치하면 20점 추가
     if row['shape'] in shape:
-        score += 20
+        score += 30
 
     # 2. 색상 점수: 색상이 모두 일치하면 20점 추가
     color_match = all(color in row['color'] for color in colors.split())
     if color_match:
-        score += 20
+        score += 30
 
     # 3. 각인 점수: 앞/뒤 각인 중 더 비슷한 쪽을 기준으로, '타입'까지 고려하여 점수 계산
     imprint_recognized = imprint.upper()
@@ -67,10 +67,10 @@ def calculate_score(row, shape, colors, imprint):
 
     # 인식된 타입과 DB 타입이 (숫자/알파벳으로) 명확히 다른 경우 큰 페널티 부여
     if recognized_type in ["alpha", "numeric"] and db_type in ["alpha", "numeric"] and recognized_type != db_type:
-        type_penalty = 30  # 30점 감점
+        type_penalty = 20  # 20점 감점
 
     # 최종 각인 점수 계산
-    max_imprint_score = 60
+    max_imprint_score = 40
     imprint_score = max(0, max_imprint_score - (min_dist * 10) - type_penalty)
     score += imprint_score
 

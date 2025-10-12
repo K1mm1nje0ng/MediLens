@@ -30,7 +30,7 @@ def remove_background(image):
 
 def preprocess_for_tesseract(image, mask):
     """
-    ✨ [최종 해결책] 모폴로지 그라디언트(Morphological Gradient)를 사용하여
+    모폴로지 그라디언트(Morphological Gradient)를 사용하여
     글자의 '외곽선'만 정확히 추출, Tesseract의 정확도를 극대화합니다.
     """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

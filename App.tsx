@@ -1,45 +1,44 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React from 'react';
+import { StatusBar } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+// 타입 정의 import
+import { RootStackParamList } from './src/types/navigation';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+// 화면 import
+import PillSearchScreen from './src/screens/PillSearchScreen';
+import ResultScreen from './src/screens/ResultScreen';
 
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function App(): React.JSX.Element {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
+    <NavigationContainer>
+      <StatusBar
+        hidden={false}              // 상태표시줄 보이기
+        backgroundColor="#ffffff"   // Android 전용 배경색
+        barStyle="dark-content"     // 아이콘 색상 (밝은 배경에는 dark-content)
       />
-    </View>
+      <Stack.Navigator initialRouteName="PillSearchScreen">
+        {/* 홈 화면 */}
+        <Stack.Screen
+          name="PillSearchScreen"
+          component={PillSearchScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* 결과 화면 */}
+        <Stack.Screen
+          name="ResultScreen"
+          component={ResultScreen}
+          options={{ title: '분석 결과' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
+
+

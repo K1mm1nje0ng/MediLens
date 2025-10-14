@@ -71,7 +71,7 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       {/* ✅ 프로그램 타이틀 */}
       <View style={styles.titleRow}>
-        <FontAwesome5 name="capsules" size={40} color="#409F82" style={{ marginRight: 8 }} />
+        <FontAwesome5 name="capsules" size={40} color="#409F82" style={{ marginRight: 15 }} />
         <Text style={styles.title}>프로그램 이름</Text>
       </View>
 
@@ -100,9 +100,7 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
         {/* 직접 알약 검색 */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#fff' }]}
-          // TODO: 직접 검색 화면 추가 시 아래 주석 해제
-          // onPress={() => navigation.navigate('DirectSearchScreen')}
-          onPress={() => Alert.alert('개발 예정')}
+          onPress={() => navigation.navigate('DirectSearchScreen')}
         >
           <Feather name="search" size={35} color="#409F82" />
           <Text style={styles.optionText}>직접 알약 검색</Text>

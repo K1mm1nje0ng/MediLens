@@ -9,6 +9,7 @@ import { RootStackParamList } from './src/types/navigation';
 // 화면 import
 import PillSearchScreen from './src/screens/PillSearchScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import DirectSearchScreen from './src/screens/DirectSearchScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -32,8 +33,15 @@ function App(): React.JSX.Element {
         <Stack.Screen
           name="ResultScreen"
           component={ResultScreen}
-          options={{ title: '분석 결과' }}
+          options={{ headerShown: false }}
         />
+        {/* 직접 검색 화면 */}
+        <Stack.Screen
+          name="DirectSearchScreen"
+          component={DirectSearchScreen}
+          options={{ headerShown: false }}
+        />  
+
       </Stack.Navigator>
     </NavigationContainer>
   );

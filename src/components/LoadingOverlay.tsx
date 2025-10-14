@@ -16,7 +16,7 @@ const LoadingOverlay: React.FC<Props> = ({ visible, message }) => {
     >
       <View style={styles.background}>
         <View style={styles.container}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size="large" color="#409F82" />
           <Text style={styles.message}>{message || '처리 중...'}</Text>
         </View>
       </View>

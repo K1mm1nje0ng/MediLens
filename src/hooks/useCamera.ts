@@ -7,7 +7,7 @@ import {
 
 // 카메라 기능 훅 정의
 export const useCamera = () => {
-  // 카메라를 실행하고 촬영된 이미지를 반환하는 함수
+  // 카메라를 실행하고 촬영된 이미지 반환
   const openCamera = async (): Promise<Asset | null> => {
     try {
       // 카메라 권한 요청

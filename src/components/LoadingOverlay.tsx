@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  // 로딩 인디케이터와 메시지를 담는 흰색 박스
+  // 로딩 인디케이터와 메시지 담는 박스
   container: {
     backgroundColor: 'white',
     padding: 25,

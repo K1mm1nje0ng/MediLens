@@ -8,13 +8,16 @@ import { useCamera } from '../hooks/useCamera';
 import { useGallery } from '../hooks/useGallery';
 import LoadingOverlay from '../components/LoadingOverlay';
 
+// 네비게이션 파라미터 타입 지정
 type PillSearchScreenProps = NativeStackScreenProps<RootStackParamList, 'PillSearchScreen'>;
 
+// 분석 결과 타입 (서버 응답 가정)
 interface AnalysisResultType {
   success: boolean;
   pillName: string;
 }
 
+// 이미지 URI를 서버로 보내 약을 분석하는 더미 API (실서비스에서는 실제 API로 교체)
 const analyzePillImageAPI = async (imageUri: string): Promise<AnalysisResultType> => {
   console.log(`${imageUri}를 서버로 전송하여 분석 요청`);
   return new Promise(resolve =>
@@ -22,14 +25,14 @@ const analyzePillImageAPI = async (imageUri: string): Promise<AnalysisResultType
   );
 };
 
-
 export default function PillSearchScreen({ navigation }: PillSearchScreenProps) {
+  // 로딩 오버레이 표시 상태
   const [isLoading, setIsLoading] = useState(false);
+  // 카메라/갤러리 훅
   const { openCamera } = useCamera();
   const { openGallery } = useGallery();
 
-// 📸 카메라 촬영 로직
-  /*✅ 카메라로 사진 찍고 분석 */
+  // 카메라 촬영 → 서버 분석 → 결과 화면 이동
   const handleTakePhoto = async () => {
     try {
       const image = await openCamera();
@@ -48,10 +51,10 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
     }
   };
 
-  /** ✅ 갤러리에서 사진 선택 후 분석 */
+  // 갤러리 선택 → 서버 분석 → 결과 화면 이동
   const handleSelectPhoto = async () => {
     try {
-      const image = await openGallery(); // useGallery 훅 수정 필요 (아래 참고)
+      const image = await openGallery();
       if (image && image.uri) {
         setIsLoading(true);
         const result = await analyzePillImageAPI(image.uri);
@@ -69,13 +72,13 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      {/* ✅ 프로그램 타이틀 */}
+      {/* 상단 타이틀 영역 */}
       <View style={styles.titleRow}>
         <FontAwesome5 name="capsules" size={40} color="#409F82" style={{ marginRight: 15 }} />
         <Text style={styles.title}>프로그램 이름</Text>
       </View>
 
-      {/* ✅ ① 검색 카드 */}
+      {/* 검색 카드: 카메라/사진/직접 검색 진입 */}
       <View style={styles.searchCard}>
         <Text style={styles.header}>무슨 약을 찾으시나요?</Text>
 
@@ -91,13 +94,13 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
         {/* 사진으로 알약 검색 */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#A8D4C5' }]}
-          onPress={handleSelectPhoto} // ✅ 갤러리 기능 유지
+          onPress={handleSelectPhoto}
         >
           <Feather name="image" size={35} color="#1C1B14" />
           <Text style={styles.optionText}>사진으로 알약 검색</Text>
         </TouchableOpacity>
 
-        {/* 직접 알약 검색 */}
+        {/* 직접 알약 검색 (필터/문자 입력 화면으로 이동) */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#fff' }]}
           onPress={() => navigation.navigate('DirectSearchScreen')}
@@ -107,43 +110,45 @@ export default function PillSearchScreen({ navigation }: PillSearchScreenProps) 
         </TouchableOpacity>
       </View>
 
-      {/* ✅ 최근 검색 기록 */}
-<View style={styles.recentCard}>
-  <View style={styles.recentHeader}>
-    <Feather name="archive" size={24} color="#000" style={{ marginRight: 8 }} />
-    <Text style={styles.recentTitle}>최근 검색 기록</Text>
-  </View>
+      {/* 최근 검색 기록: 탭 시 결과 화면으로 바로 이동 */}
+      <View style={styles.recentCard}>
+        <View style={styles.recentHeader}>
+          <Feather name="archive" size={24} color="#000" style={{ marginRight: 8 }} />
+          <Text style={styles.recentTitle}>최근 검색 기록</Text>
+        </View>
 
-  {['맥세렌디정', '삐콤씨정'].map((pill, index) => (
-    <TouchableOpacity
-      key={index}
-      style={styles.recentItem}
-      activeOpacity={0.7}
-      onPress={() => {
-        // ✅ 최근 검색 클릭 시 결과 화면으로 이동
-        const result = { success: true, pillName: pill };
-        navigation.navigate('ResultScreen', { result });
-      }}
-    >
-      <View style={styles.recentIcon} />
-      <Text style={styles.recentText}>{pill}</Text>
-    </TouchableOpacity>
-  ))}
-</View>
+        {['맥세렌디정', '삐콤씨정'].map((pill, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.recentItem}
+            activeOpacity={0.7}
+            onPress={() => {
+              const result = { success: true, pillName: pill };
+              navigation.navigate('ResultScreen', { result });
+            }}
+          >
+            <View style={styles.recentIcon} />
+            <Text style={styles.recentText}>{pill}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-
-      {/* ✅ 로딩 오버레이 */}
+      {/* 분석 진행 시 사용자에게 상태를 보여주는 오버레이 */}
       <LoadingOverlay visible={isLoading} message="알약을 분석 중입니다..." />
     </ScrollView>
   );
 }
 
-// styles 부분은 기존과 동일
+// 스타일 정의
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FFFC' },
   scroll: { padding: 20, alignItems: 'stretch', paddingBottom: 50 },
+
+  // 타이틀 영역
   titleRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginVertical: 25 },
   title: { fontSize: 36, fontWeight: '600', color: '#000' },
+
+  // 검색 카드
   searchCard: {
     backgroundColor: '#f8f8f8',
     borderRadius: 16,
@@ -156,6 +161,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   header: { fontSize: 27, fontWeight: '500', textAlign: 'center', marginVertical: 30 },
+
+  // 옵션 버튼
   optionBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,6 +172,8 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   optionText: { fontSize: 20, fontWeight: '500', marginLeft: 10, color: '#000' },
+
+  // 최근 검색 카드
   recentCard: {
     backgroundColor: '#f8f8f8',
     borderRadius: 16,

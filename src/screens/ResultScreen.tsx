@@ -13,14 +13,16 @@ import { RootStackParamList } from '../types/navigation';
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
+// 네비게이션 파라미터 타입
 type Props = NativeStackScreenProps<RootStackParamList, 'ResultScreen'>;
 
 export default function ResultScreen({ route, navigation }: Props) {
+  // 이전 화면에서 전달된 분석 결과
   const { result } = route.params;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FEFB' }}>
-      {/* ✅ 헤더 */}
+      {/* 상단 헤더: 뒤로가기 / 화면 제목 */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#000" />
@@ -29,13 +31,15 @@ export default function ResultScreen({ route, navigation }: Props) {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* ✅ 스크롤 콘텐츠 */}
+      {/* 스크롤 가능한 본문 */}
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {/* 결과 카드 박스 */}
         <View style={styles.outerBox}>
+          {/* 결과 타이틀(알약명) */}
           <View style={styles.header}>
             <FontAwesome5
               name="capsules"
@@ -46,6 +50,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             <Text style={styles.title}>{result.pillName || '알약명 미확인'}</Text>
           </View>
 
+          {/* 약 이미지 영역(샘플 이미지 사용) */}
           <View style={styles.imageBox}>
             <Image
               source={require('../../assets/images/pill.png')}
@@ -53,7 +58,9 @@ export default function ResultScreen({ route, navigation }: Props) {
             />
           </View>
 
+          {/* 식별 정보(각인/치수/성상 등) */}
           <View style={styles.identBox}>
+            {/* 각인 표시(좌/우 면 분리 예시) */}
             <View style={styles.markContainer}>
               <View style={styles.markBoxLeft}>
                 <Text style={styles.markText}>BAT</Text>
@@ -63,6 +70,7 @@ export default function ResultScreen({ route, navigation }: Props) {
               </View>
             </View>
 
+            {/* 치수/성상 정보 */}
             <View style={styles.identInfo}>
               <View style={styles.identRow}>
                 <Text style={styles.identLabel}>장축(mm) |</Text>
@@ -80,7 +88,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          {/* ✅ 세부 정보 - InfoRow 수정됨 */}
+          {/* 상세 정보(전문/일반, 업체명, 성분, 용법용량, 효능, 주의사항) */}
           <View style={styles.infoBox}>
             <InfoRow label="전문/일반 |" value="일반의약품" />
             <InfoRow label="업체명 |" value="(유)한풍제약" />
@@ -103,6 +111,7 @@ export default function ResultScreen({ route, navigation }: Props) {
           </View>
         </View>
 
+        {/* 수정 버튼: 직접 검색 화면으로 이동 */}
         <TouchableOpacity
           style={styles.button}
           onPress={() => navigation.navigate('DirectSearchScreen')}
@@ -120,10 +129,11 @@ export default function ResultScreen({ route, navigation }: Props) {
   );
 }
 
-/* ✅ 세부 정보 행 (더보기 기능 추가) */
+//상세 정보 행 컴포넌트
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   const [expanded, setExpanded] = useState(false);
-  const MAX_LENGTH = 40; // 표시할 기본 글자 수
+  const MAX_LENGTH = 40; // 기본 표시 글자 수
 
   const isLong = value.length > MAX_LENGTH;
   const displayText = expanded ? value : value.slice(0, MAX_LENGTH) + (isLong ? '...' : '');
@@ -146,9 +156,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// 스타일 정의
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FEFB' },
   scroll: { paddingBottom: 60, paddingHorizontal: 20 },
+
+  // 헤더
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,6 +170,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
+
+  // 결과 카드
   outerBox: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -165,8 +180,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     elevation: 3,
   },
+
+  // 타이틀/아이콘
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   title: { fontSize: 22, fontWeight: '600', color: '#1C1B14' },
+
+  // 이미지 박스
   imageBox: {
     width: '100%',
     alignItems: 'center',
@@ -176,6 +195,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   image: { width: 250, height: 100, resizeMode: 'contain' },
+
+  // 식별 정보 박스
   identBox: {
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
@@ -183,6 +204,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 8,
   },
+  // 각인(좌/우) 컨테이너
   markContainer: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -208,6 +230,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   markText: { fontSize: 14, fontWeight: '700', color: '#000' },
+
+  // 치수/성상
   identInfo: { gap: 4 },
   identRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
   identLabel: {
@@ -222,6 +246,8 @@ const styles = StyleSheet.create({
     color: '#000',
     marginRight: 10,
   },
+
+  // 상세 정보 리스트
   infoBox: { backgroundColor: '#FFFFFF', padding: 8 },
   infoRow: {
     flexDirection: 'row',
@@ -242,6 +268,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+
+  // 하단 수정 버튼
   button: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -255,6 +283,7 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 18, fontWeight: '500', color: '#000' },
 });
+
 
 
 

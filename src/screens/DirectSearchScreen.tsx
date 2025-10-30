@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 
+// 모양/제형/색상 선택지 정의
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
 const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체'];
 const colorOptions = [
@@ -22,6 +23,7 @@ const colorOptions = [
 export default function DirectSearchScreen() {
   const navigation = useNavigation();
 
+  // 사용자가 선택/입력한 검색 조건 상태
   const [shape, setShape] = useState('전체');
   const [type, setType] = useState('전체');
   const [color, setColor] = useState('전체');
@@ -29,6 +31,7 @@ export default function DirectSearchScreen() {
   const [product, setProduct] = useState('');
   const [company, setCompany] = useState('');
 
+  // 공통 옵션 그룹 렌더링: 라벨 + 옵션 버튼들
   const renderOptionGroup = (
     label: string,
     options: string[],
@@ -54,10 +57,12 @@ export default function DirectSearchScreen() {
     </View>
   );
 
+  // 검색 버튼 동작: 입력값을 결과 화면으로 전달 (데모용 더미 데이터)
   const handleSearch = () => {
     const result = {
       success: true,
       pillName: `${company || product || '알약'} (직접검색)`,
+      // 실제 구현에서는 shape/type/color/identifier 등을 함께 전달하거나 API 호출
     };
     // @ts-ignore
     navigation.navigate('ResultScreen', { result });
@@ -65,7 +70,7 @@ export default function DirectSearchScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FEFB' }}>
-      {/* ✅ 헤더 (결과화면과 동일) */}
+      {/* 상단 헤더 영역: 뒤로가기/제목 */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="black" />
@@ -74,41 +79,41 @@ export default function DirectSearchScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* ✅ 스크롤 영역 */}
+      {/* 스크롤 가능한 본문 */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}>
         
-        {/* ✅ 큰 흰색 카드 (outerBox 스타일 적용) */}
+        {/* 메인 카드 컨테이너 */}
         <View style={styles.outerBox}>
           {renderOptionGroup('모양', shapeOptions, shape, setShape)}
           {renderOptionGroup('제형', typeOptions, type, setType)}
           {renderOptionGroup('색상', colorOptions, color, setColor)}
 
-          {/* 입력 필드 */}
+          {/* 텍스트 입력 필드 그룹 (식별문자/제품명/회사명) */}
           {(
-  [
-    ['식별문자', identifier, setIdentifier],
-    ['제품명', product, setProduct],
-    ['회사명', company, setCompany],
-  ] as [string, string, React.Dispatch<React.SetStateAction<string>>][]
-).map(([label, value, setter], idx) => (
-  <View style={styles.inputGroup} key={idx}>
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.label}> |</Text>
-    </View>
-    <TextInput
-      placeholder="입력"
-      placeholderTextColor="#B7B7B7"
-      style={styles.input}
-      value={value}
-      onChangeText={setter}
-    />
-  </View>
-))}
+            [
+              ['식별문자', identifier, setIdentifier],
+              ['제품명', product, setProduct],
+              ['회사명', company, setCompany],
+            ] as [string, string, React.Dispatch<React.SetStateAction<string>>][]
+          ).map(([label, value, setter], idx) => (
+            <View style={styles.inputGroup} key={idx}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.label}>{label}</Text>
+                <Text style={styles.label}> |</Text>
+              </View>
+              <TextInput
+                placeholder="입력"
+                placeholderTextColor="#B7B7B7"
+                style={styles.input}
+                value={value}
+                onChangeText={setter}
+              />
+            </View>
+          ))}
 
-          {/* 검색 버튼 */}
+          {/* 검색 실행 버튼 */}
           <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
             <Feather name="search" size={18} color="#fff" />
             <Text style={styles.searchButtonText}>검색하기</Text>
@@ -119,10 +124,11 @@ export default function DirectSearchScreen() {
   );
 }
 
+// 스타일 시트: 레이아웃/색상/타이포 정의
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingBottom: 60 },
 
-  /* ✅ 헤더 (결과화면과 동일 구조) */
+  // 헤더
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
 
-  /* ✅ 카드 박스 (ResultScreen outerBox 복제) */
+  // 메인 카드 컨테이너
   outerBox: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -145,6 +151,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
+  // 옵션 그룹 및 라벨
   groupContainer: { marginBottom: 15 },
   label: {
     fontSize: 15,
@@ -167,6 +174,7 @@ const styles = StyleSheet.create({
   selected: { borderWidth: 2, borderColor: '#409F82' },
   optionText: { fontSize: 11, color: '#484848', fontWeight: '500' },
 
+  // 입력 필드
   inputGroup: { marginTop: 10 },
   input: {
     backgroundColor: 'white',
@@ -183,6 +191,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
+  // 검색 버튼
   searchButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -199,3 +208,4 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+

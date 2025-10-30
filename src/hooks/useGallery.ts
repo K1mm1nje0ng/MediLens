@@ -5,10 +5,12 @@ import {
   Asset,
 } from 'react-native-image-picker';
 
+// 갤러리에서 이미지를 선택하는 훅
 export const useGallery = () => {
+  // 갤러리를 열고 사용자가 선택한 이미지 반환
   const openGallery = async (): Promise<Asset | null> => {
     try {
-      // ✅ 1️⃣ Android 권한 요청
+      // Android 권한 요청
       if (Platform.OS === 'android') {
         const permission =
           Number(Platform.Version) >= 33
@@ -24,36 +26,31 @@ export const useGallery = () => {
         });
 
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('권한 거부', '갤러리 접근이 거부되었습니다.');
+          Alert.alert('갤러리 접근이 거부되었습니다.');
           return null;
         }
       }
 
-      // ✅ 2️⃣ 갤러리 옵션
+      // 갤러리 옵션 설정
       const options: ImageLibraryOptions = {
         mediaType: 'photo',
         selectionLimit: 1,
         includeBase64: false,
       };
 
-      // ✅ 3️⃣ launchImageLibrary는 Promise를 직접 반환함
+      // 갤러리 실행
       const response = await launchImageLibrary(options);
 
-      if (response.didCancel) {
-        console.log('사용자가 갤러리 선택을 취소했습니다.');
+      if (response.didCancel) return null;
+      if (response.errorCode) {
+        Alert.alert('오류', `갤러리 실패: ${response.errorMessage}`);
         return null;
-      } else if (response.errorCode) {
-        Alert.alert('오류', `갤러리 실행 실패: ${response.errorMessage}`);
-        return null;
-      } else if (response.assets && response.assets.length > 0) {
-        const photo = response.assets[0];
-        console.log('선택된 이미지 URI:', photo.uri);
-        return photo;
       }
+      if (response.assets && response.assets.length > 0) return response.assets[0];
 
       return null;
     } catch (error) {
-      console.error('launchImageLibrary 실행 중 오류:', error);
+      console.error('갤러리 실행 중 오류:', error);
       Alert.alert('오류', '갤러리 실행 중 문제가 발생했습니다.');
       return null;
     }

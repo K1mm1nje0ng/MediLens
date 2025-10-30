@@ -1,40 +1,43 @@
 import React from 'react';
 import { StatusBar } from 'react-native';
+// 네비게이션 컨테이너 및 스택 네비게이터 임포트
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// 네비게이션 타입 정의 (화면 간 전달할 파라미터 구조)
+// 네비게이션 타입 (스크린 목록 및 파라미터)
 import { RootStackParamList } from './src/types/navigation';
 
-// 개별 화면 컴포넌트 import
+// 스크린 컴포넌트 임포트
 import PillSearchScreen from './src/screens/PillSearchScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import DirectSearchScreen from './src/screens/DirectSearchScreen';
+import SearchResultListScreen from './src/screens/SearchResultListScreen'; // 목록 화면 임포트
 
-// Stack Navigator 생성 (타입 지정)
+// Stack Navigator 생성
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// 메인 앱 컴포넌트
 function App(): React.JSX.Element {
   return (
-    // 네비게이션 컨테이너: 전체 앱을 네비게이션 구조로 감쌈
+    // 네비게이션 최상위 컨테이너
     <NavigationContainer>
-      {/* 상태 표시줄 설정 */}
+      {/* 상태 표시줄 설정 (어두운 아이콘) */}
       <StatusBar
-        hidden={false}              // 상태 표시줄 표시
-        backgroundColor="#ffffff"   // Android 배경색
-        barStyle="dark-content"     // 아이콘/텍스트 색상 (밝은 배경용)
+        hidden={false}
+        backgroundColor="#ffffff"
+        barStyle="dark-content"
       />
 
-      {/* Stack 네비게이터 설정 */}
+      {/* 스크린 스택 정의 (초기 화면: PillSearchScreen) */}
       <Stack.Navigator initialRouteName="PillSearchScreen">
-        {/* 메인 화면: 알약 검색 메뉴 */}
+        {/* 메인 화면 */}
         <Stack.Screen
           name="PillSearchScreen"
           component={PillSearchScreen}
-          options={{ headerShown: false }} // React Navigation 기본 헤더 숨김
+          options={{ headerShown: false }}
         />
 
-        {/* 분석 결과 화면 */}
+        {/* 상세 결과 화면 */}
         <Stack.Screen
           name="ResultScreen"
           component={ResultScreen}
@@ -46,7 +49,14 @@ function App(): React.JSX.Element {
           name="DirectSearchScreen"
           component={DirectSearchScreen}
           options={{ headerShown: false }}
-        />  
+        />
+
+        {/* 검색 결과 목록 화면 */}
+        <Stack.Screen
+          name="SearchResultListScreen"
+          component={SearchResultListScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -10,12 +10,12 @@ interface Props {
 // 화면 전체를 덮는 로딩 오버레이 컴포넌트
 const LoadingOverlay: React.FC<Props> = ({ visible, message }) => {
   return (
-    // Modal을 이용해 현재 화면 위에 반투명한 배경과 로딩 인디케이터 표시
+    //현재 화면 위에 반투명한 배경과 로딩 인디케이터 표시
     <Modal
-      transparent={true} // 배경을 투명하게 설정
-      animationType="fade" // 페이드 인/아웃 애니메이션 적용
-      visible={visible} // 표시 여부를 외부에서 제어
-      onRequestClose={() => {}} // 안드로이드의 뒤로가기 버튼 대응
+      transparent={true}
+      animationType="fade" 
+      visible={visible} 
+      onRequestClose={() => {}} 
     >
       {/* 어두운 반투명 배경 */}
       <View style={styles.background}>
@@ -23,7 +23,7 @@ const LoadingOverlay: React.FC<Props> = ({ visible, message }) => {
         <View style={styles.container}>
           {/* 회전하는 로딩 인디케이터 */}
           <ActivityIndicator size="large" color="#409F82" />
-          {/* 로딩 메시지 표시 (기본값: '처리 중...') */}
+          {/* 로딩 메시지 표시 */}
           <Text style={styles.message}>{message || '처리 중...'}</Text>
         </View>
       </View>

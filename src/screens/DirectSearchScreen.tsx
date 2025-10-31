@@ -18,7 +18,7 @@ import Feather from 'react-native-vector-icons/Feather';
 // API 및 로딩 오버레이 임포트
 import { postSearch } from '../api/pillApi';
 import LoadingOverlay from '../components/LoadingOverlay';
-import axios from 'axios'; // 1. (추가) AxiosError 타입을 위해 import
+import axios from 'axios'; // AxiosError 타입을 위해 import
 
 // 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
@@ -81,9 +81,7 @@ export default function DirectSearchScreen() {
 
   // '검색하기' 버튼 핸들러
   const handleSearch = async () => {
-    // -----------------------------------------------------------------
-    // 2. (수정) 유효성 검사: API 명세서에 따라 '모양'과 '색상'을 필수로 검사
-    // -----------------------------------------------------------------
+    // 2. 유효성 검사: API 명세서에 따라 '모양'과 '색상'을 필수로 검사
     if (shape === '전체' || color === '전체') {
       Alert.alert(
         '필수 조건 누락',
@@ -101,6 +99,11 @@ export default function DirectSearchScreen() {
       name: product || undefined,
       company: company || undefined,
     };
+
+    // -----------------------------------------------------------------
+    // (추가) API로 보낼 파라미터 객체를 콘솔에 출력
+    // -----------------------------------------------------------------
+    console.log('API로 전송할 검색 파라미터:', searchParams);
 
     setIsLoading(true);
 
@@ -122,14 +125,20 @@ export default function DirectSearchScreen() {
       }
 
     } catch (error) { 
-      console.error('검색 중 오류 발생:', error);
-      // -----------------------------------------------------------------
-      // 3. (수정) 400 에러일 경우, 서버가 보낸 에러 메시지(error.response.data.error)를 표시
-      // -----------------------------------------------------------------
+      console.error('검색 중 오류 발생:', error); // 콘솔에 전체 에러 기록
+      
+      // 400 에러 (필수 값 누락 등)
       if (axios.isAxiosError(error) && error.response?.status === 400) {
         Alert.alert('검색 오류 (400)', error.response.data?.error || '잘못된 요청입니다. (필수 값 누락)');
+      
+      // (수정) 400 외의 다른 Axios 에러 (Network Error, Timeout, 500 등)
+      // 'error.message'를 Alert에 직접 표시
+      } else if (axios.isAxiosError(error)) { 
+        Alert.alert('오류', error.message);
+      
+      // Axios가 아닌 일반 에러
       } else {
-        Alert.alert('오류', '검색 중 문제가 발생했습니다.');
+        Alert.alert('앱 오류', '알 수 없는 오류가 발생했습니다.');
       }
     } finally {
       setIsLoading(false);

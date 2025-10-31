@@ -5,7 +5,7 @@ import {
   Asset,
 } from 'react-native-image-picker';
 
-// 갤러리에서 이미지를 선택하는 훅
+// 갤러리 기능 훅 정의
 export const useGallery = () => {
   // 갤러리를 열고 사용자가 선택한 이미지 반환
   const openGallery = async (): Promise<Asset | null> => {

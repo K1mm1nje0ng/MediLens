@@ -11,21 +11,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 // 네비게이션 임포트
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+// -----------------------------------------------------------------
+// (수정) PillSearchSummary 타입 임포트 (단순화된 버전)
+// -----------------------------------------------------------------
+import { RootStackParamList, PillSearchSummary } from '../types/navigation';
 // 아이콘, API, 컴포넌트 임포트
 import Feather from 'react-native-vector-icons/Feather';
 import { getDetail } from '../api/pillApi';
 import LoadingOverlay from '../components/LoadingOverlay';
 
-// 내비게이션 파라미터 타입
+// 내비게이션 파라미터 타입 (검색 결과 '요약' 목록)
 type Props = NativeStackScreenProps<
   RootStackParamList,
   'SearchResultListScreen'
 >;
 
-// 직접 검색 결과 목록 표시하는 화면
+// 직접 검색 결과 '목록'을 표시하는 화면
 export default function SearchResultListScreen({ route, navigation }: Props) {
-  // 내비게이션 파라미터에서 검색 결과 목록 추출
+  // 내비게이션 파라미터에서 검색 결과 목록(요약) 추출
   const { searchResults } = route.params;
   // 상세 정보 로딩 상태 (getDetail 호출 시)
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +37,7 @@ export default function SearchResultListScreen({ route, navigation }: Props) {
   const handleItemPress = async (pillId: string) => {
     setIsLoading(true);
     try {
-      // 1. 탭한 항목의 ID로 getDetail API 호출 (상세 정보 요청)
+      // 1. 탭한 항목의 ID('code')로 getDetail API 호출 (상세 정보 요청)
       const detailResult = await getDetail(pillId);
 
       // 2. 상세 정보(detailResult)를 ResultScreen으로 전달
@@ -49,7 +52,7 @@ export default function SearchResultListScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FEFB' }}>
-      {/* 상단 헤더 */}
+      {/* 상단 헤더 (뒤로가기, 화면 제목) */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#000" />
@@ -74,9 +77,9 @@ export default function SearchResultListScreen({ route, navigation }: Props) {
           </View>
         ) : (
           // 검색 결과 목록 렌더링
-          searchResults.map((item) => (
+          searchResults.map((item: PillSearchSummary) => (
             <TouchableOpacity
-              key={item.id}
+              key={item.id} // 'code'
               style={styles.itemCard}
               onPress={() => handleItemPress(item.id)}
             >
@@ -85,16 +88,9 @@ export default function SearchResultListScreen({ route, navigation }: Props) {
               <View style={styles.itemTextContainer}>
                 {/* 알약 이름 */}
                 <Text style={styles.itemTitle}>{item.pillName}</Text>
-                {/* 제조사 */}
-                <Text style={styles.itemSubtitle}>{item.company}</Text>
-                {/* 성상 (한 줄, '...') */}
-                <Text
-                  style={styles.itemDescription}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {item.description}
-                </Text>
+                {/* ----------------------------------------------------------------- */}
+                {/* (수정) company, description 제거 (API가 제공하지 않음) */}
+                {/* ----------------------------------------------------------------- */}
               </View>
             </TouchableOpacity>
           ))
@@ -104,7 +100,7 @@ export default function SearchResultListScreen({ route, navigation }: Props) {
   );
 }
 
-// 스타일 정의
+// 화면 스타일 정의
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FEFB' },
   scroll: { padding: 20 },
@@ -142,25 +138,18 @@ const styles = StyleSheet.create({
   itemTextContainer: {
     flex: 1,
   },
-  // 목록 아이템 제목
+  // 목록 아이템 제목 (알약 이름)
   itemTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
     marginBottom: 4,
   },
-  // 목록 아이템 부제목
-  itemSubtitle: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 4,
-  },
-  // 목록 아이템 설명
-  itemDescription: {
-    fontSize: 12,
-    color: '#777',
-  },
-  // 검색 결과 없음
+  // -----------------------------------------------------------------
+  // (수정) itemSubtitle, itemDescription 스타일 제거
+  // -----------------------------------------------------------------
+  
+  // '검색 결과 없음' UI
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',

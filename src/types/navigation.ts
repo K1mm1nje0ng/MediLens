@@ -1,49 +1,45 @@
-// API 응답 공용 타입: 알약 상세 정보 (ResultScreen용)
+// 1. 상세 정보 타입 (GET /detail API 응답 기반 + UI/UX 필드)
 export interface PillResultData {
-  success: boolean;
-  id: string; // 알약 고유 ID
-  pillName: string; // 알약 이름
-  company: string; // 제조사
-  description: string; // 성상 (모양, 색상 등)
-  imageUrl: string; // 알약 이미지 URL
-  imprintFront: string; // 각인 (앞)
-  imprintBack: string; // 각인 (뒤)
-  sizeLong: string; // 장축
-  sizeShort: string; // 단축
-  sizeThick: string; // 두께
-  type: string; // 전문/일반
-  components: string; // 주성분
-  usage: string; // 용법용량
-  effects: string; // 효능효과
-  warnings: string; // 주의사항
-}
-
-// API 응답 공용 타입: 알약 요약 정보 (SearchResultListScreen용)
-export interface PillSearchSummary {
+  // --- API 명세서에 있는 필드 ---
   id: string;
   pillName: string;
   company: string;
-  description: string;
+  effects: string;
+  usage: string;
+  warnings: string;
+  // warningAlert: string; // "주의사항경고" 제거
+  sideEffects: string; // 부작용
+  storage: string; // 보관법
   imageUrl: string;
+
+  // --- (확인 필요) 명세서에 없지만, UI/UX상 필요한 필드 ---
+  imprintFront: string; // 각인 앞
+  imprintBack: string; // 각인 뒤
+  sizeLong: string; // 장축
+  sizeShort: string; // 단축
+  sizeThic: string; // 두께
+  description: string; // 성상
 }
 
-// 전체 네비게이션 스크린 파라미터 타입 정의
+// 2. 요약 정보 타입 (GET /search, /result, /recent API 응답)
+export interface PillSearchSummary {
+  id: string; // API의 'code'
+  pillName: string; // API의 'pill_info'
+  imageUrl: string; // API의 'image'
+}
+
+// 3. 앱 전체 네비게이션 스택 정의
 export type RootStackParamList = {
-  // 알약 검색 메인 화면
-  PillSearchScreen: undefined;
-
-  // 직접 검색 화면
-  DirectSearchScreen: undefined;
-
-  // 검색 결과 목록 화면
+  PillSearchScreen: undefined; // 메인 화면
+  DirectSearchScreen: undefined; // 직접 검색
+  
+  // 검색 결과 목록 (요약 정보 '배열'을 받음)
   SearchResultListScreen: {
     searchResults: PillSearchSummary[];
   };
 
-  // 분석 결과 상세 화면
-  ResultScreen: {
-    result: PillResultData;
-  };
+  // 상세 결과 (상세 정보 '객체'를 받음)
+  ResultScreen: { result: PillResultData };
 };
 
 

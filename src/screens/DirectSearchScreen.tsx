@@ -15,17 +15,20 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
-// Mock API 및 로딩 오버레이 임포트
+// API 및 로딩 오버레이 임포트
 import { postSearch } from '../api/pillApi';
 import LoadingOverlay from '../components/LoadingOverlay';
 
-// 검색 필터 옵션 정의 (모양, 제형, 색상)
+// 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
-const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체'];
+const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체']; // API 명세의 'form'
+
+// -----------------------------------------------------------------
+// (수정) colorOptions: 명세서에 명시된 색상 리스트 + '전체'
+// -----------------------------------------------------------------
 const colorOptions = [
-  '하양', '노랑', '주황', '분홍', '빨강', '갈색',
-  '연두', '초록', '청록', '파랑', '남색', '자주',
-  '보라', '회색', '검정', '투명', '전체',
+  '빨강', '검정', '하양', '회색', '주황', '노랑', '초록',
+  '파랑', '남색', '보라', '분홍', '갈색', '전체'
 ];
 
 // 이 스크린에서 사용할 네비게이션 prop 타입
@@ -41,11 +44,11 @@ export default function DirectSearchScreen() {
 
   // 검색 조건 상태 (모양, 제형, 색상, 텍스트 입력)
   const [shape, setShape] = useState('전체');
-  const [type, setType] = useState('전체');
+  const [type, setType] = useState('전체'); // 'form'
   const [color, setColor] = useState('전체');
-  const [identifier, setIdentifier] = useState('');
-  const [product, setProduct] = useState('');
-  const [company, setCompany] = useState('');
+  const [identifier, setIdentifier] = useState(''); // 'imprint'
+  const [product, setProduct] = useState(''); // 'name'
+  const [company, setCompany] = useState(''); // 'company'
 
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);
@@ -81,32 +84,27 @@ export default function DirectSearchScreen() {
 
   // '검색하기' 버튼 핸들러
   const handleSearch = async () => {
-    // API 전송용 검색 파라미터 객체 생성
+    // API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
     const searchParams = {
       shape: shape === '전체' ? undefined : shape,
-      type: type === '전체' ? undefined : type,
+      form: type === '전체' ? undefined : type, // type -> form
       color: color === '전체' ? undefined : color,
-      identifier: identifier || undefined,
-      product: product || undefined,
+      imprint: identifier || undefined, // identifier -> imprint
+      name: product || undefined, // product -> name
       company: company || undefined,
     };
 
     setIsLoading(true);
 
     try {
-      // 1. postSearch API 호출 (검색 결과 '목록' 요청)
+      // 1. postSearch API 호출 (실제 GET /search 요청)
       const searchResults = await postSearch(searchParams);
 
-      if (!searchResults || searchResults.length === 0) {
-        // 결과가 없으면 Alert (향후 '결과 없음' UI로 대체 가능)
-        Alert.alert('검색 실패', '일치하는 알약 정보를 찾을 수 없습니다.');
-      } else {
-        // 2. 결과 목록 화면(SearchResultListScreen)으로 '목록' 데이터 전달
-        navigation.navigate('SearchResultListScreen', {
-          searchResults: searchResults,
-        });
-      }
-    } catch (error) {
+      // 2. 결과 목록 화면(SearchResultListScreen)으로 '목록' 데이터 전달
+      navigation.navigate('SearchResultListScreen', {
+        searchResults: searchResults,
+      });
+    } catch (error) { 
       console.error('검색 중 오류 발생:', error);
       Alert.alert('오류', '검색 중 문제가 발생했습니다.');
     } finally {

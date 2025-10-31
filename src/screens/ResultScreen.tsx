@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,54 +10,33 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+// 타입 임포트 (PillResultData 사용)
 import { RootStackParamList, PillResultData } from '../types/navigation';
+// 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
-// AsyncStorage 임포트 및 최근 검색용 키 정의
-import AsyncStorage from '@react-native-async-storage/async-storage';
-const HISTORY_KEY = '@pill_search_history';
-
-// 내비게이션 파라미터 타입 정의
+// 내비게이션 스택으로부터 `ResultScreen`이 받을 파라미터 타입
 type Props = NativeStackScreenProps<RootStackParamList, 'ResultScreen'>;
 
-// 검색 결과를 AsyncStorage에 저장 (최근 5개, 중복 제거)
-const saveToHistory = async (newPill: PillResultData) => {
-  try {
-    // 1. 기존 기록 로드
-    const rawHistory = await AsyncStorage.getItem(HISTORY_KEY);
-    const history: PillResultData[] = rawHistory ? JSON.parse(rawHistory) : [];
-
-    // 2. 중복 제거
-    const filteredHistory = history.filter((pill) => pill.id !== newPill.id);
-
-    // 3. 새 항목 맨 앞 추가 및 5개로 제한
-    const newHistory = [newPill, ...filteredHistory].slice(0, 5);
-
-    // 4. 저장
-    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
-    console.log('검색 기록 저장됨:', newHistory.length, '개');
-  } catch (error) {
-    console.error('AsyncStorage 저장 오류:', error);
-  }
-};
-
-// 알약 분석 결과 상세 화면 컴포넌트
+// 알약 분석 결과 상세 정보를 표시하는 메인 화면 컴포넌트
 export default function ResultScreen({ route, navigation }: Props) {
-  // 내비게이션 파라미터에서 결과 데이터 추출, 이미지 로딩 상태 관리
-  const { result } = route.params;
+  // `route.params`로부터 전달받은 알약 결과 데이터 추출
+  const { result } = route.params as { result: PillResultData };
+  // 네트워크 이미지 로딩 상태 관리
   const [isImageLoading, setIsImageLoading] = useState(true);
 
-  // 화면 로드 시(result 변경 시) saveToHistory 함수를 호출해 검색 기록 저장
-  useEffect(() => {
-    if (result && result.id) {
-      saveToHistory(result);
-    }
-  }, [result]);
+  // (제거) AsyncStorage에 저장하던 useEffect 로직 제거됨
+
+  // 이미지 로드 실패 시 에러 로그 콜백
+  const handleImageError = (error: any) => {
+    console.error('이미지 로드 실패:', error.nativeEvent.error);
+    setIsImageLoading(false);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FEFB' }}>
-      {/* 상단 헤더 (뒤로가기, 화면 제목) */}
+      {/* 화면 상단 헤더: 뒤로가기 버튼과 '분석 결과' 타이틀 */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#000" />
@@ -66,15 +45,15 @@ export default function ResultScreen({ route, navigation }: Props) {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* 메인 스크롤 뷰 */}
+      {/* 알약의 모든 상세 정보를 포함하는 메인 스크롤 뷰 */}
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* 알약 정보 전체를 감싸는 흰색 카드 */}
+        {/* 모든 정보를 감싸는 메인 카드 */}
         <View style={styles.outerBox}>
-          {/* 카드 헤더 (아이콘, 알약 이름) */}
+          {/* 알약 아이콘과 알약 이름 */}
           <View style={styles.header}>
             <FontAwesome5
               name="capsules"
@@ -87,13 +66,13 @@ export default function ResultScreen({ route, navigation }: Props) {
             </Text>
           </View>
 
-          {/* 알약 이미지 (네트워크 로드, 로딩 인디케이터 표시) */}
+          {/* 알약 이미지 (네트워크 로드) */}
           <View style={styles.imageBox}>
             <Image
               source={{ uri: result.imageUrl }}
               style={styles.image}
               onLoadEnd={() => setIsImageLoading(false)}
-              onError={() => setIsImageLoading(false)}
+              onError={handleImageError}
             />
             {isImageLoading && (
               <ActivityIndicator
@@ -104,7 +83,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             )}
           </View>
 
-          {/* 식별 정보 섹션 (각인, 크기, 성상) */}
+          {/* 알약의 물리적 식별 정보 (각인, 크기, 성상) */}
           <View style={styles.identBox}>
             {/* 각인 (앞/뒤) */}
             <View style={styles.markContainer}>
@@ -115,8 +94,7 @@ export default function ResultScreen({ route, navigation }: Props) {
                 <Text style={styles.markText}>{result.imprintBack}</Text>
               </View>
             </View>
-
-            {/* 크기 및 성상 정보 */}
+            {/* 크기 및 성상 */}
             <View style={styles.identInfo}>
               <View style={styles.identRow}>
                 <Text style={styles.identLabel}>장축(mm) |</Text>
@@ -124,9 +102,8 @@ export default function ResultScreen({ route, navigation }: Props) {
                 <Text style={styles.identLabel}>단축(mm) |</Text>
                 <Text style={styles.identValue}>{result.sizeShort}</Text>
                 <Text style={styles.identLabel}>두께(mm) |</Text>
-                <Text style={styles.identValue}>{result.sizeThick}</Text>
+                <Text style={styles.identValue}>{result.sizeThic}</Text>
               </View>
-
               <View style={styles.identRow}>
                 <Text style={styles.identLabel}>성상 |</Text>
                 <Text style={styles.identValue}>{result.description}</Text>
@@ -134,18 +111,19 @@ export default function ResultScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          {/* 상세 정보 리스트 */}
+          {/* 알약의 상세 정보 (InfoRow 컴포넌트 사용) */}
           <View style={styles.infoBox}>
-            <InfoRow label="전문/일반 |" value={result.type} />
-            <InfoRow label="업체명 |" value={result.company} />
-            <InfoRow label="주성분 |" value={result.components} />
-            <InfoRow label="용법용량 |" value={result.usage} />
-            <InfoRow label="효능효과 |" value={result.effects} />
-            <InfoRow label="주의사항 |" value={result.warnings} />
+            <InfoRow label="제품명" value={result.pillName} />
+            <InfoRow label="업체명" value={result.company} />
+            <InfoRow label="효능" value={result.effects} />
+            <InfoRow label="사용법" value={result.usage} />
+            <InfoRow label="주의사항" value={result.warnings} />
+            <InfoRow label="부작용" value={result.sideEffects} />
+            <InfoRow label="보관법" value={result.storage} />
           </View>
         </View>
 
-        {/* '찾은 약 수정하기' 버튼 */}
+        {/* '수정하기' 버튼: 탭하면 `DirectSearchScreen`으로 이동 */}
         <TouchableOpacity
           style={styles.button}
           onPress={() => navigation.navigate('DirectSearchScreen')}
@@ -163,13 +141,16 @@ export default function ResultScreen({ route, navigation }: Props) {
   );
 }
 
-// '라벨 | 값' 형태의 상세 정보 행 컴포넌트
-// 긴 텍스트의 경우 '더보기/접기' 기능 제공
+// '라벨 | 값' 형태의 정보 행을 렌더링하는 재사용 컴포넌트
 function InfoRow({ label, value }: { label: string; value: string }) {
+  // 텍스트가 40자를 초과할 경우 '더보기/접기' 상태
   const [expanded, setExpanded] = useState(false);
   const MAX_LENGTH = 40;
+
+  // 값이 null/undefined일 경우 빈 문자열로 처리
   const safeValue = value || '';
   const isLong = safeValue.length > MAX_LENGTH;
+  // 표시할 텍스트 (더보기/접기 적용)
   const displayText = expanded
     ? safeValue
     : safeValue.slice(0, MAX_LENGTH) + (isLong ? '...' : '');
@@ -179,7 +160,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>
         {displayText}{' '}
-        {isLong && (
+        {isLong && ( // 텍스트가 길 때만 '더보기/접기' 버튼 표시
           <Text
             onPress={() => setExpanded(!expanded)}
             style={{ color: '#409F82', fontWeight: '600' }}
@@ -192,10 +173,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// 스타일 정의
+// 화면 스타일 정의
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FEFB' },
   scroll: { paddingBottom: 60, paddingHorizontal: 20 },
+  // 헤더
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,6 +186,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
+  // 메인 카드
   outerBox: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -212,8 +195,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     elevation: 3,
   },
+  // '알약명' 헤더
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   title: { fontSize: 22, fontWeight: '600', color: '#1C1B14', flex: 1 },
+  // 이미지
   imageBox: {
     width: '100%',
     height: 150,
@@ -230,6 +215,7 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'contain',
   },
+  // 식별 정보 (각인, 크기, 성상)
   identBox: {
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
@@ -237,6 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 8,
   },
+  // 각인 (앞/뒤)
   markContainer: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -264,6 +251,7 @@ const styles = StyleSheet.create({
     minHeight: 30,
   },
   markText: { fontSize: 14, fontWeight: '700', color: '#000' },
+  // 크기, 성상
   identInfo: { gap: 4 },
   identRow: {
     flexDirection: 'row',
@@ -283,6 +271,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     flexShrink: 1,
   },
+  // 상세 정보 리스트
   infoBox: { backgroundColor: '#FFFFFF', padding: 8 },
   infoRow: {
     flexDirection: 'row',
@@ -295,7 +284,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'right',
     marginRight: 4,
-    width: 80,
+    width: 90, // 라벨 너비 (주의사항경고가 없으므로 90으로 되돌림)
   },
   infoValue: {
     flex: 1,
@@ -303,6 +292,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  // '수정하기' 버튼
   button: {
     flexDirection: 'row',
     justifyContent: 'center',

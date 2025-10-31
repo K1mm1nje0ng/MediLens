@@ -1,30 +1,14 @@
 import axios from 'axios';
-// 백엔드 URL 
-const BASE_URL = 'https://your.backend-api.com/api/v1';
+
+// 백엔드 URL (pillApi.ts에서 이 주소를 가져다 쓸 수 있도록 export)
+export const BASE_URL = 'http://54.206.119.43';
 
 // Axios 인스턴스 생성
 const client = axios.create({
   baseURL: BASE_URL,
   // 타임아웃 설정
   timeout: 10000,
-  // 공통 헤더 등을 추가
-  // headers: {
-  //   'Content-Type': 'application/json',
-  // },
+  // (참고) POST, GET마다 헤더가 다르므로 공통 헤더는 제거
 });
-
-// 요청 인터셉터 설정
-// client.interceptors.request.use(
-//   (config) => {
-//     // const token = '...some logic to get token...';
-//     // if (token) {
-//     //   config.headers.Authorization = `Bearer ${token}`;
-//     // }
-//     return config;
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   },
-// );
 
 export default client;

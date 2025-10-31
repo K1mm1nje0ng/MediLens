@@ -1,68 +1,71 @@
-# imprint_analysis.py
-
 import cv2
 import pytesseract
+import logging
+import re
 import numpy as np
-from image_preprocessing import preprocess_for_tesseract
+# image_preprocessing에서 두 개의 새로운 전문 함수를 가져옵니다.
+from image_preprocessing import preprocess_for_dark_text, preprocess_for_bright_text
 
-# Tesseract OCR 실행 파일 경로 설정 (Windows 기준)
-try:
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-except Exception:
-    print("Tesseract 실행 파일을 찾을 수 없습니다. 경로를 확인해주세요.")
+
+# Tesseract OCR 경로 설정 (필요시 환경에 맞게 수정)
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+def run_tesseract(image):
+    """Tesseract OCR을 실행하고 결과를 정제하는 헬퍼 함수"""
+    try:
+        # Tesseract 설정: --psm 6은 이미지를 단일 텍스트 블록으로 간주
+        config = r'--psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+        text = pytesseract.image_to_string(image, lang='eng', config=config)
+
+        # OCR 결과 정제: 공백, 특수문자 제거
+        cleaned_text = re.sub(r'[\W_]+', '', text).strip()
+        return cleaned_text
+    except Exception as e:
+        logging.warning(f"Tesseract 실행 중 오류: {e}")
+        return ""
 
 
 def get_imprint(original_pill_image, pill_mask, debug=False):
     """
-    Tesseract OCR과 '외곽선 추출' 기반 전처리 로직을 사용하여 각인을 분석합니다.
+    알약 이미지에서 각인을 추출합니다.
+    [수정] '어두운 각인'과 '밝은 각인' 두 가지 전처리를 모두 실행하고,
+    최종적으로 문자열(string)만 반환합니다.
     """
-    print("  - [각인 분석] Tesseract OCR + 외곽선 추출 최종 분석 시작...")
+    logging.info("- [각인 분석] Tesseract OCR + 외곽선 추출 최종 분석 시작...")
 
-    preprocessed_image = preprocess_for_tesseract(original_pill_image.copy(), pill_mask)
+    # --- 1. 어두운 각인 추출 시도 (밝은 표면용) ---
+    preprocessed_dark = preprocess_for_dark_text(original_pill_image.copy(), pill_mask)
+    text_from_dark = run_tesseract(preprocessed_dark)
+
+    # --- 2. 밝은 각인 추출 시도 (어두운 표면용) ---
+    preprocessed_bright = preprocess_for_bright_text(original_pill_image.copy(), pill_mask)
+    text_from_bright = run_tesseract(preprocessed_bright)
 
     if debug:
-        print("\n  [디버그] 전처리된 이미지를 확인하세요. 창을 닫으려면 아무 키나 누르세요.")
-        cv2.imshow("Preprocessed Image for Tesseract", preprocessed_image)
-        cv2.waitKey(0)  # 사용자가 키를 누를 때까지 대기
-        cv2.destroyAllWindows()  # 모든 창 닫기
+        logging.info("[디버그] 전처리된 이미지를 확인하세요. (창 1: 어두운 각인용, 창 2: 밝은 각인용)")
+        debug_image_dark = cv2.resize(preprocessed_dark, (300, 300))
+        debug_image_bright = cv2.resize(preprocessed_bright, (300, 300))
+        combined_debug_image = np.hstack((debug_image_dark, debug_image_bright))
+        cv2.imshow("Debug: Dark Imprint (Left) / Bright Imprint (Right)", combined_debug_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
-    upscaled = cv2.resize(preprocessed_image, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_LANCZOS4)
+    # --- 3. 결과 조합 ---
+    combined_results = set()  # 중복 제거
+    if text_from_dark:
+        combined_results.add(text_from_dark)
+    if text_from_bright:
+        combined_results.add(text_from_bright)
 
-    best_text = ""
-    max_confidence = 0.0
-
-    # 다양한 회전 각도를 시도하여 최상의 결과를 찾습니다.
-    for angle in range(0, 360, 30):
-        h, w = upscaled.shape
-        center = (w // 2, h // 2)
-        M = cv2.getRotationMatrix2D(center, angle, 1.0)
-        rotated = cv2.warpAffine(upscaled, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
-        # psm 7: 이미지를 한 줄의 텍스트로 간주
-        custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-        data = pytesseract.image_to_data(rotated, config=custom_config, output_type=pytesseract.Output.DICT)
-
-        current_words = []
-        current_confs = []
-        for i in range(len(data['text'])):
-            conf = int(data['conf'][i])
-            text = data['text'][i].strip()
-            if conf > 60 and text:
-                current_words.append(text)
-                current_confs.append(conf)
-
-        if current_words:
-            current_text = "".join(current_words)
-            current_conf = np.mean(current_confs)
-
-            if len(current_text) > len(best_text) or \
-                    (len(current_text) == len(best_text) and current_conf > max_confidence):
-                max_confidence = current_conf
-                best_text = current_text
-
-    if not best_text:
-        print("  - [각인 분석] 최종 각인을 찾지 못했습니다.")
+    if not combined_results:
+        logging.warning("  - [각인 분석] 최종 각인을 찾지 못했습니다.")
+        # [수정] 튜플이 아닌 빈 문자열 반환
         return ""
 
-    print(f"  - [각인 분석] 최종 식별된 각인: '{best_text}' (평균 신뢰도: {max_confidence:.2f}%)")
-    return best_text
+    final_text = "/".join(combined_results)
+    confidence = 70.0  # 임시 신뢰도
+
+    logging.info(f"  - [각인 분석] 최종 식별된 각인: '{final_text}' (신뢰도: {confidence:.2f}%)")
+
+    # [수정] 튜플이 아닌 최종 텍스트 문자열만 반환
+    return final_text

@@ -103,7 +103,6 @@ if __name__ == "__main__":
             shape_result = classify_shape_with_ai(smoothed_binarized_image, shape_model)
         print(f"  - AI 모양 분석 결과: {shape_result}")
 
-        # ------------------ 💡 주요 수정 사항 ------------------
         # 각인 분석
         # get_imprint 함수에 debug=DEBUG_MODE 파라미터를 전달합니다.
         imprint_text = get_imprint(cropped_pill.copy(), pill_mask, debug=DEBUG_MODE)

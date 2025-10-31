@@ -1,109 +1,118 @@
-# color_analysis.py
-
 import cv2
 import numpy as np
+from sklearn.cluster import KMeans
+from skimage.color import rgb2lab, deltaE_cie76
+import logging
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='- %(message)s')
+
+# --- 기준 색상 정의 (RGB 및 LAB) ---
+# [수정] 순수 색상이 아닌, 현실의 알약과 유사한 대표 색상 값으로 변경
+#       더 정확한 구분을 위해 연두, 하늘, 청록 등 색상 추가
+color_dict_rgb = {
+    '하양': [255, 255, 255], '검정': [0, 0, 0], '회색': [149, 165, 166],
+    '빨강': [231, 76, 60],    '주황': [230, 126, 34], '노랑': [241, 196, 15],
+    '연두': [163, 196, 50],   '초록': [39, 174, 96],    '청록': [22, 160, 133],
+    '하늘': [91, 192, 222],   '파랑': [52, 152, 219],   '남색': [44, 62, 80],
+    '보라': [142, 68, 173],   '분홍': [231, 127, 153],  '갈색': [160, 82, 45]
+}
+
+# 모든 기준 색상의 LAB 값을 미리 계산하여 성능을 최적화합니다.
+color_dict_lab = {
+    name: rgb2lab(np.uint8([[rgb]]))
+    for name, rgb in color_dict_rgb.items()
+}
 
 
-# --- 다중 색상 알약 분석 ---
-def analyze_pill_colors(pill_image_without_bg):
-    """
-    K-Means Clustering을 사용하여 알약의 주요 색상을 최대 2개까지 분석합니다.
-    알약이 단일 색상인지, 두 가지 색상으로 조합되었는지 판별합니다.
-    """
-    # 이미지를 RGB로 변환하고 픽셀 데이터로 재구성
-    image_rgb = cv2.cvtColor(pill_image_without_bg, cv2.COLOR_BGR2RGB)
-    pixels = image_rgb.reshape(-1, 3)
-
-    # 배경(검은색)을 제외한 실제 알약 픽셀만 필터링
-    non_black_pixels = np.array([p for p in pixels if p.any()])
-    if len(non_black_pixels) < 50:  # 분석에 필요한 최소 픽셀 수
-        return None, ["색상 분석 불가"]
-
-    # --- K-Means 실행 ---
-    # K=4로 설정하여 알약의 양쪽 색상, 그림자, 하이라이트를 분리할 가능성을 높임
-    samples = non_black_pixels.astype(np.float32)
-    K = 4
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
-    attempts = 3
-    flags = cv2.KMEANS_PP_CENTERS
-    try:
-        compactness, labels, centers = cv2.kmeans(samples, K, None, criteria, attempts, flags)
-    except cv2.error:
-        # 픽셀이 너무 적거나 색상 분리가 안될 경우 예외 처리
-        return None, ["색상 분석 불가"]
-
-    # 각 클러스터에 속한 픽셀 수 계산
-    labels = labels.flatten()
-    unique, counts = np.unique(labels, return_counts=True)
-
-    # 픽셀 수가 적은 클러스터는 무시 (최소 5% 이상 차지해야 유의미한 색상으로 간주)
-    min_pixel_percentage = 0.05
-    significant_indices = [i for i, count in enumerate(counts) if count / len(samples) > min_pixel_percentage]
-
-    if not significant_indices:
-        # 모든 클러스터가 너무 작으면, 가장 큰 클러스터 하나만 사용
-        dominant_rgb = centers[unique[np.argmax(counts)]].astype(int)
-        dominant_color_name = map_rgb_to_color_name(dominant_rgb)
-        return [dominant_rgb], [dominant_color_name]
-
-    # 유의미한 클러스터들을 픽셀 수 기준으로 정렬
-    sorted_significant_indices = sorted(significant_indices, key=lambda i: counts[i], reverse=True)
-
-    # --- 상위 1~2개 색상 추출 및 분석 ---
-    # 가장 많은 픽셀을 차지하는 색상
-    top1_rgb = centers[unique[sorted_significant_indices[0]]].astype(int)
-    top1_name = map_rgb_to_color_name(top1_rgb)
-
-    final_rgb_colors = [top1_rgb]
-    final_color_names = {top1_name}
-
-    # 유의미한 클러스터가 2개 이상인 경우, 두 번째 색상 분석
-    if len(sorted_significant_indices) > 1:
-        top2_rgb = centers[unique[sorted_significant_indices[1]]].astype(int)
-        top2_name = map_rgb_to_color_name(top2_rgb)
-
-        # 두 색상의 이름이 다를 경우에만 두 번째 색상을 추가
-        if top1_name != top2_name:
-            final_rgb_colors.append(top2_rgb)
-            final_color_names.add(top2_name)
-
-    # 최종 결과를 정렬하여 반환 (예: ['빨강', '흰색'])
-    return final_rgb_colors, sorted(list(final_color_names))
-
-
-# --- HSV 색상 공간을 이용한 색상 매핑 (정확도 개선) ---
 def map_rgb_to_color_name(rgb_color):
     """
-    RGB 값을 HSV 색상 공간으로 변환하여 가장 가까운 색상 이름을 매핑합니다.
+    CIELAB 색 공간에서 Delta E 공식을 사용하여, 주어진 RGB 값과
+    가장 시각적으로 가까운 색상 이름을 찾습니다.
     """
-    if rgb_color is None:
-        return "알 수 없음"
+    if rgb_color is None: return "알 수 없음"
+    input_lab = rgb2lab(np.uint8([[list(rgb_color)]]))
+    min_dist = float('inf')
+    closest_color = "알 수 없음"
+    for name, standard_lab in color_dict_lab.items():
+        dist = deltaE_cie76(input_lab, standard_lab)
+        if dist < min_dist:
+            min_dist = dist
+            closest_color = name
+    return closest_color
 
-    colors_rgb = {
-        '하양': [255, 255, 255], '검정': [0, 0, 0], '회색': [128, 128, 128],
-        '빨강': [255, 0, 0], '주황': [255, 165, 0], '노랑': [255, 255, 0],
-        '초록': [0, 128, 0], '파랑': [0, 0, 255], '남색': [0, 0, 128],
-        '보라': [128, 0, 128], '분홍': [255, 192, 203], '갈색': [165, 42, 42],
-    }
 
-    detected_color_np = np.uint8([[rgb_color]])
-    detected_hsv = cv2.cvtColor(detected_color_np, cv2.COLOR_RGB2HSV)[0][0]
+def analyze_pill_colors(pill_image_without_bg):
+    """
+    K-Means로 주요 색상 후보를 추출한 뒤, 후보 간의 시각적 유사도와
+    반사/그림자 여부를 판단하여 단일/다중 색상을 최종 결정합니다.
+    """
+    try:
+        image_rgb = cv2.cvtColor(pill_image_without_bg, cv2.COLOR_BGR2RGB)
+        pixels = image_rgb.reshape(-1, 3)
 
-    if detected_hsv[1] < 40:
-        if detected_hsv[2] > 200:
-            return '흰색'
-        elif detected_hsv[2] < 60:
-            return '검정'
-        else:
-            return '회색'
+        non_black_pixels = np.array([p for p in pixels if p.any()])
+        if len(non_black_pixels) < 100:
+            return [[0, 0, 0]], ["색상 분석 불가"]
 
-    distances = []
-    for name, value_rgb in colors_rgb.items():
-        standard_color_np = np.uint8([[value_rgb]])
-        standard_hsv = cv2.cvtColor(standard_color_np, cv2.COLOR_RGB2HSV)[0][0]
-        hue_diff = abs(int(detected_hsv[0]) - int(standard_hsv[0]))
-        hue_distance = min(hue_diff, 180 - hue_diff)
-        distances.append((hue_distance, name))
+        kmeans = KMeans(n_clusters=5, n_init='auto', random_state=42)
+        kmeans.fit(non_black_pixels)
 
-    distances.sort(key=lambda x: x[0])
-    return distances[0][1]
+        unique_labels, counts = np.unique(kmeans.labels_, return_counts=True)
+        cluster_centers = kmeans.cluster_centers_.astype(int)
+
+        min_pixel_percentage = 0.15
+        significant_clusters = []
+        for label, count in zip(unique_labels, counts):
+            if count / len(non_black_pixels) > min_pixel_percentage:
+                significant_clusters.append({'rgb': cluster_centers[label], 'count': count})
+
+        if not significant_clusters:
+            dominant_label = unique_labels[np.argmax(counts)]
+            dominant_rgb = cluster_centers[dominant_label]
+            color_name = map_rgb_to_color_name(dominant_rgb)
+            logging.info(f"식별된 색상: {color_name} (대표 RGB: {dominant_rgb.tolist()})")
+            return [dominant_rgb.tolist()], [color_name]
+
+        sorted_clusters = sorted(significant_clusters, key=lambda x: x['count'], reverse=True)
+        top1_rgb = sorted_clusters[0]['rgb']
+        top1_name = map_rgb_to_color_name(top1_rgb)
+
+        if len(sorted_clusters) == 1:
+            logging.info(f"식별된 색상: {top1_name} (대표 RGB: {top1_rgb.tolist()})")
+            return [top1_rgb.tolist()], [top1_name]
+
+        top2_rgb = sorted_clusters[1]['rgb']
+        top2_name = map_rgb_to_color_name(top2_rgb)
+
+        # --- 단순하고 안정적인 최종 결정 로직 ---
+        achromatic_colors = ['하양', '회색', '검정']
+        top1_is_achromatic = top1_name in achromatic_colors
+        top2_is_achromatic = top2_name in achromatic_colors
+
+        # 1. 반사/그림자 처리: 한쪽이 유채색이고 다른 쪽이 무채색이면, 유채색을 정답으로 선택
+        if top1_is_achromatic and not top2_is_achromatic:
+            logging.info(f"반사/그림자({top1_name})를 제외하고 실제 색상({top2_name})을 채택합니다.")
+            return [top2_rgb.tolist()], [top2_name]
+
+        if not top1_is_achromatic and top2_is_achromatic:
+            logging.info(f"반사/그림자({top2_name})를 제외하고 실제 색상({top1_name})을 채택합니다.")
+            return [top1_rgb.tolist()], [top1_name]
+
+        # 2. 색상 유사도 처리: 두 색상이 비슷하면(예: 주황과 갈색) 하나의 색으로 통일
+        delta_e = float(deltaE_cie76(rgb2lab(np.uint8([[top1_rgb]])), rgb2lab(np.uint8([[top2_rgb]]))))
+        SIMILARITY_THRESHOLD = 25.0
+        if delta_e < SIMILARITY_THRESHOLD:
+            logging.info(
+                f"두 색상({top1_name}, {top2_name})이 유사하여(Delta E: {delta_e:.2f}), 대표 색상({top1_name})으로 최종 결정합니다.")
+            return [top1_rgb.tolist()], [top1_name]
+
+        # 3. 실제 다중 색상 처리: 위 두 경우에 해당하지 않으면, 실제로 두 가지 색을 가진 알약
+        final_rgb_colors = [top1_rgb.tolist(), top2_rgb.tolist()]
+        final_color_names = sorted([top1_name, top2_name])
+        logging.info(f"식별된 색상: {', '.join(final_color_names)} (대표 RGB: {final_rgb_colors})")
+        return final_rgb_colors, final_color_names
+
+    except Exception as e:
+        logging.error(f"알약 색상 분석 중 예측하지 못한 오류 발생: {e}", exc_info=True)
+        return [[0, 0, 0]], ["알 수 없음"]

@@ -18,14 +18,11 @@ import Feather from 'react-native-vector-icons/Feather';
 // API 및 로딩 오버레이 임포트
 import { postSearch } from '../api/pillApi';
 import LoadingOverlay from '../components/LoadingOverlay';
+import axios from 'axios'; // 1. (추가) AxiosError 타입을 위해 import
 
 // 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
 const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체']; // API 명세의 'form'
-
-// -----------------------------------------------------------------
-// (수정) colorOptions: 명세서에 명시된 색상 리스트 + '전체'
-// -----------------------------------------------------------------
 const colorOptions = [
   '빨강', '검정', '하양', '회색', '주황', '노랑', '초록',
   '파랑', '남색', '보라', '분홍', '갈색', '전체'
@@ -84,13 +81,24 @@ export default function DirectSearchScreen() {
 
   // '검색하기' 버튼 핸들러
   const handleSearch = async () => {
+    // -----------------------------------------------------------------
+    // 2. (수정) 유효성 검사: API 명세서에 따라 '모양'과 '색상'을 필수로 검사
+    // -----------------------------------------------------------------
+    if (shape === '전체' || color === '전체') {
+      Alert.alert(
+        '필수 조건 누락',
+        'API 규격상 \'모양\'과 \'색상\'은 반드시 선택해야 합니다.'
+      );
+      return; // API 호출 중단
+    }
+
     // API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
     const searchParams = {
-      shape: shape === '전체' ? undefined : shape,
-      form: type === '전체' ? undefined : type, // type -> form
-      color: color === '전체' ? undefined : color,
-      imprint: identifier || undefined, // identifier -> imprint
-      name: product || undefined, // product -> name
+      shape: shape, // 필수
+      color: color, // 필수
+      form: type === '전체' ? undefined : type,
+      imprint: identifier || undefined,
+      name: product || undefined,
       company: company || undefined,
     };
 
@@ -100,13 +108,29 @@ export default function DirectSearchScreen() {
       // 1. postSearch API 호출 (실제 GET /search 요청)
       const searchResults = await postSearch(searchParams);
 
-      // 2. 결과 목록 화면(SearchResultListScreen)으로 '목록' 데이터 전달
-      navigation.navigate('SearchResultListScreen', {
-        searchResults: searchResults,
-      });
+      // (추가) API가 빈 배열을 반환했을 경우 (검색 결과 없음)
+      if (!searchResults || searchResults.length === 0) {
+        Alert.alert(
+          '검색 결과 없음',
+          '일치하는 알약 정보를 찾을 수 없습니다.'
+        );
+      } else {
+        // 2. 결과 목록 화면(SearchResultListScreen)으로 '목록' 데이터 전달
+        navigation.navigate('SearchResultListScreen', {
+          searchResults: searchResults,
+        });
+      }
+
     } catch (error) { 
       console.error('검색 중 오류 발생:', error);
-      Alert.alert('오류', '검색 중 문제가 발생했습니다.');
+      // -----------------------------------------------------------------
+      // 3. (수정) 400 에러일 경우, 서버가 보낸 에러 메시지(error.response.data.error)를 표시
+      // -----------------------------------------------------------------
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        Alert.alert('검색 오류 (400)', error.response.data?.error || '잘못된 요청입니다. (필수 값 누락)');
+      } else {
+        Alert.alert('오류', '검색 중 문제가 발생했습니다.');
+      }
     } finally {
       setIsLoading(false);
     }

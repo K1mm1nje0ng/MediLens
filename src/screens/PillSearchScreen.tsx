@@ -17,14 +17,14 @@ import {
   useFocusEffect,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-// 타입 임포트 (PillResultData가 아닌 PillSearchSummary 사용)
+// 타입 임포트
 import { RootStackParamList, PillSearchSummary } from '../types/navigation';
 // 커스텀 훅 임포트 (카메라, 갤러리)
 import { useCamera } from '../hooks/useCamera';
 import { useGallery } from '../hooks/useGallery';
 // 컴포넌트 임포트
 import LoadingOverlay from '../components/LoadingOverlay';
-// API 함수 임포트 (getRecent, getDetail 추가)
+// API 함수 임포트
 import {
   postPredict,
   getStatus,
@@ -32,7 +32,6 @@ import {
   getRecent,
   getDetail,
 } from '../api/pillApi';
-// (제거) AsyncStorage 임포트 제거
 
 // 카메라/갤러리 훅이 반환하는 이미지 에셋 타입
 interface ImageAsset {
@@ -55,23 +54,23 @@ export default function PillSearchScreen() {
   // 로딩 오버레이, 메시지, 최근 검색 기록 상태 관리
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
-  // (수정) history 상태는 상세 정보(PillResultData)가 아닌 '요약 정보'(PillSearchSummary)를 저장
+  // (수정) 최근 기록 타입은 1D 배열 (PillSearchSummary[])
   const [history, setHistory] = useState<PillSearchSummary[]>([]);
 
   // 커스텀 훅 사용
   const { openCamera } = useCamera();
   const { openGallery } = useGallery();
 
-  // (수정) '최근 검색 기록'을 AsyncStorage가 아닌 getRecent API로 로드
+  // (수정) GET /recent API로 최근 검색 기록(1D)을 로드
   const loadHistory = async () => {
     try {
-      // 1. GET /recent API 호출
+      // (수정) AsyncStorage -> getRecent()
       const historyData = await getRecent();
-      // 2. 최대 5개로 제한 (API가 5개 이상 반환할 경우 대비)
-      setHistory(historyData.slice(0, 5));
+      // (수정) 2개만 보여줌
+      setHistory(historyData.slice(0, 2));
     } catch (error) {
-      console.error('최근 검색 기록 불러오기 오류:', error);
-      setHistory([]); // 실패 시 빈 배열로 설정
+      console.error('getRecent API 오류:', error);
+      setHistory([]);
     }
   };
 
@@ -82,7 +81,7 @@ export default function PillSearchScreen() {
     }, []),
   );
 
-  // '이미지 분석' API 호출 (실제 API 반영)
+  // '이미지 분석' API 호출 (2D 배열 처리)
   const handleImageAnalysis = async (image: ImageAsset) => {
     // 1. uri 검사
     if (!image.uri) {
@@ -93,34 +92,43 @@ export default function PillSearchScreen() {
     try {
       setIsLoading(true);
       setMessage('이미지 분석을 요청합니다...');
-      // 2. API는 task_id (snake_case)를 반환
       const { task_id } = await postPredict(image); // 1. 분석 요청
 
-      setMessage('분석 상태를 확인 중입니다...');
-      // 3. getStatus에 task_id (snake_case) 전달
-      const statusResponse = await getStatus(task_id); // 2. 상태 확인
-      const status = statusResponse.status; // status는 'PENDING' 또는 'SUCCESS'
+      // 2초마다 상태를 체크하는 폴링(Polling) 구현
+      let status = 'PENDING';
+      let attempts = 0;
+      while (status === 'PENDING' && attempts < 30) {
+        attempts++;
+        // -----------------------------------------------------------------
+        // (수정) `(${attempts}번째)` 카운터 텍스트 제거
+        // -----------------------------------------------------------------
+        setMessage(`분석 상태 확인 중...`);
+        const statusResponse = await getStatus(task_id); // 2. 상태 확인
+        status = statusResponse.status;
 
-      // 4. 'SUCCESS' 상태일 때 결과 조회
+        if (status === 'SUCCESS') break; // 성공 시 루프 탈출
+        await new Promise<void>((resolve) => setTimeout(resolve, 2000)); // 2초 대기
+      }
+
+      // 3. 최종 상태 확인
       if (status === 'SUCCESS') {
         setMessage('결과를 가져오는 중입니다...');
-        // 5. getResult는 '요약 목록' (PillSearchSummary[])을 반환
-        const resultList = await getResult(task_id);
+        // 4. getResult는 이제 '2D 배열' (PillSearchSummary[][])을 반환
+        const resultGroups = await getResult(task_id);
 
-        if (!resultList || resultList.length === 0) {
+        if (!resultGroups || resultGroups.length === 0) {
           Alert.alert(
             '분석 실패',
             '이미지와 일치하는 알약을 찾을 수 없습니다.',
           );
         } else {
-          // 6. '검색 결과 목록' 화면으로 이동
-          navigation.navigate('SearchResultListScreen', {
-            searchResults: resultList,
+          // 5. 'ImageResultGroupScreen'(신규)으로 2D 배열 전달
+          navigation.navigate('ImageResultGroupScreen', {
+            imageResults: resultGroups,
           });
         }
       } else if (status === 'PENDING') {
-        // (참고) 실제 앱에서는 'SUCCESS'가 될 때까지 Polling(반복 조회) 필요
-        Alert.alert('처리 중', '알약 분석이 진행 중입니다. 잠시 후 다시 시도해 주세요.');
+        Alert.alert('시간 초과', '알약 분석이 오래 걸리고 있습니다.');
       } else {
         Alert.alert('오류', '알약 분석에 실패했습니다.');
       }
@@ -138,7 +146,7 @@ export default function PillSearchScreen() {
     try {
       const image = await openCamera();
       if (image && image.uri) {
-        await handleImageAnalysis(image as ImageAsset); // 분석 함수 호출
+        await handleImageAnalysis(image as ImageAsset);
       }
     } catch (err) {
       console.error(err);
@@ -150,27 +158,25 @@ export default function PillSearchScreen() {
     try {
       const image = await openGallery();
       if (image && image.uri) {
-        await handleImageAnalysis(image as ImageAsset); // 분석 함수 호출
+        await handleImageAnalysis(image as ImageAsset);
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // -----------------------------------------------------------------
-  // (수정) '최근 검색 기록' 항목 탭 핸들러 (getDetail 호출)
-  // -----------------------------------------------------------------
+  // (수정) '최근 검색 기록' 탭 핸들러 (getDetail 호출)
   const handleRecentSearch = async (pill: PillSearchSummary) => {
     setIsLoading(true);
     setMessage('상세 정보를 불러오는 중...');
     try {
-      // 1. 요약 정보의 id(code)로 getDetail API 호출
+      // 1. pill.id (code)로 상세 정보 API 호출
       const detailResult = await getDetail(pill.id);
-      // 2. 상세 정보(PillResultData)를 ResultScreen으로 전달
+      // 2. ResultScreen으로 이동
       navigation.navigate('ResultScreen', { result: detailResult });
     } catch (error) {
-      console.error('상세 정보 조회 오류:', error);
-      Alert.alert('오류', '상세 정보를 불러오는 데 실패했습니다.');
+      console.error('getDetail API 오류:', error);
+      Alert.alert('오류', '상세 정보를 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -244,12 +250,12 @@ export default function PillSearchScreen() {
         ) : (
           <>
             {/* 최근 검색 상위 2개 목록 렌더링 (이미지, 텍스트) */}
-            {history.slice(0, 2).map((pill) => (
+            {history.map((pill) => (
               <TouchableOpacity
                 key={pill.id}
                 style={styles.recentItem}
                 activeOpacity={0.7}
-                onPress={() => handleRecentSearch(pill)}
+                onPress={() => handleRecentSearch(pill)} // (수정) getDetail 호출
               >
                 {/* 알약 이미지 */}
                 <Image
@@ -319,8 +325,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
+    // -----------------------------------------------------------------
+    // (수정) 요청하신 paddingVertical, marginVertical 값으로 변경
+    // -----------------------------------------------------------------
     paddingVertical: 25, // 버튼 높이
-    marginVertical: 13, // 버튼 간 간격
+    marginVertical: 13, // 버튼 간 격
   },
   optionText: {
     fontSize: 20,

@@ -26,8 +26,6 @@ export default function ResultScreen({ route, navigation }: Props) {
   // 네트워크 이미지 로딩 상태 관리
   const [isImageLoading, setIsImageLoading] = useState(true);
 
-  // (제거) AsyncStorage에 저장하던 useEffect 로직 제거됨
-
   // 이미지 로드 실패 시 에러 로그 콜백
   const handleImageError = (error: any) => {
     console.error('이미지 로드 실패:', error.nativeEvent.error);
@@ -83,33 +81,49 @@ export default function ResultScreen({ route, navigation }: Props) {
             )}
           </View>
 
-          {/* 알약의 물리적 식별 정보 (각인, 크기, 성상) */}
+          {/* ----------------------------------------------------------------- */}
+          {/* (수정) 알약의 물리적 식별 정보 (최종 명세 반영) */}
+          {/* ----------------------------------------------------------------- */}
           <View style={styles.identBox}>
             {/* 각인 (앞/뒤) */}
             <View style={styles.markContainer}>
               <View style={styles.markBoxLeft}>
-                <Text style={styles.markText}>{result.imprintFront}</Text>
+                <Text style={styles.markText}>{result.imprint1}</Text>
               </View>
               <View style={styles.markBoxRight}>
-                <Text style={styles.markText}>{result.imprintBack}</Text>
+                <Text style={styles.markText}>{result.imprint2}</Text>
               </View>
             </View>
-            {/* 크기 및 성상 */}
+            
+            {/* 크기, 모양, 형태, 색상 */}
             <View style={styles.identInfo}>
+              {/* 크기 (장축, 단축, 두께) */}
               <View style={styles.identRow}>
-                <Text style={styles.identLabel}>장축(mm) |</Text>
-                <Text style={styles.identValue}>{result.sizeLong}</Text>
-                <Text style={styles.identLabel}>단축(mm) |</Text>
-                <Text style={styles.identValue}>{result.sizeShort}</Text>
-                <Text style={styles.identLabel}>두께(mm) |</Text>
-                <Text style={styles.identValue}>{result.sizeThic}</Text>
+                <Text style={styles.identLabel}>크기(mm) |</Text>
+                <Text style={styles.identValue}>
+                  {result.sizeLong} x {result.sizeShort} x {result.sizeThick}
+                </Text>
               </View>
+              
+              {/* 모양, 형태 */}
               <View style={styles.identRow}>
-                <Text style={styles.identLabel}>성상 |</Text>
-                <Text style={styles.identValue}>{result.description}</Text>
+                <Text style={styles.identLabel}>모양/형태 |</Text>
+                <Text style={styles.identValue}>
+                  {result.shape} / {result.form}
+                </Text>
+              </View>
+              
+              {/* 색상 */}
+              <View style={styles.identRow}>
+                <Text style={styles.identLabel}>색상 |</Text>
+                <Text style={styles.identValue}>
+                  {result.color1}
+                  {result.color2 ? ` / ${result.color2}` : ''}
+                </Text>
               </View>
             </View>
           </View>
+          {/* ----------------------------------------------------------------- */}
 
           {/* 알약의 상세 정보 (InfoRow 컴포넌트 사용) */}
           <View style={styles.infoBox}>
@@ -118,6 +132,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             <InfoRow label="효능" value={result.effects} />
             <InfoRow label="사용법" value={result.usage} />
             <InfoRow label="주의사항" value={result.warnings} />
+            <InfoRow label="주의사항경고" value={result.warningAlert} />
             <InfoRow label="부작용" value={result.sideEffects} />
             <InfoRow label="보관법" value={result.storage} />
           </View>
@@ -149,6 +164,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
   // 값이 null/undefined일 경우 빈 문자열로 처리
   const safeValue = value || '';
+  // 값이 비어있으면 렌더링하지 않음
+  if (!safeValue) {
+    return null;
+  }
+  
   const isLong = safeValue.length > MAX_LENGTH;
   // 표시할 텍스트 (더보기/접기 적용)
   const displayText = expanded
@@ -252,7 +272,7 @@ const styles = StyleSheet.create({
   },
   markText: { fontSize: 14, fontWeight: '700', color: '#000' },
   // 크기, 성상
-  identInfo: { gap: 4 },
+  identInfo: { gap: 6 }, // (수정) 항목 간 간격
   identRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -282,9 +302,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1C1B14',
     fontSize: 16,
-    textAlign: 'right',
+    textAlign: 'left', // 왼쪽 정렬
     marginRight: 4,
-    width: 90, // 라벨 너비 (주의사항경고가 없으므로 90으로 되돌림)
+    width: 110, // (수정) '주의사항경고'가 잘리지 않게 너비 증가
   },
   infoValue: {
     flex: 1,
@@ -306,6 +326,5 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 18, fontWeight: '500', color: '#000' },
 });
-
 
 

@@ -15,10 +15,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
-// API 및 로딩 오버레이 임포트
-import { postSearch } from '../api/pillApi';
+// 로딩 오버레이 임포트
 import LoadingOverlay from '../components/LoadingOverlay';
-import axios from 'axios'; // AxiosError 타입을 위해 import
+// (참고) API는 여기서 호출하지 않고, SearchResultListScreen으로 파라미터 전달
 
 // 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
@@ -43,12 +42,9 @@ export default function DirectSearchScreen() {
   const [shape, setShape] = useState('전체');
   const [type, setType] = useState('전체'); // 'form'
   const [color, setColor] = useState('전체');
-  const [identifier, setIdentifier] = useState(''); // 'imprint'
+  const [identifier, setIdentifier] = useState(''); // 'imprint' (API는 각인_1, 각인_2)
   const [product, setProduct] = useState(''); // 'name'
   const [company, setCompany] = useState(''); // 'company'
-
-  // 로딩 상태
-  const [isLoading, setIsLoading] = useState(false);
 
   // 옵션 버튼 그룹(모양, 제형, 색상) 렌더링 함수
   const renderOptionGroup = (
@@ -79,70 +75,33 @@ export default function DirectSearchScreen() {
     </View>
   );
 
-  // '검색하기' 버튼 핸들러
-  const handleSearch = async () => {
-    // 2. 유효성 검사: API 명세서에 따라 '모양'과 '색상'을 필수로 검사
-    if (shape === '전체' || color === '전체') {
-      Alert.alert(
-        '필수 조건 누락',
-        'API 규격상 \'모양\'과 \'색상\'은 반드시 선택해야 합니다.'
-      );
-      return; // API 호출 중단
-    }
+  // '검색하기' 버튼 핸들러 (페이지네이션 적용)
+  const handleSearch = () => {
+    // -----------------------------------------------------------------
+    // (수정) "모양/색상 필수" 유효성 검사 코드를 제거합니다.
+    // (새 명세서: 파라미터가 없어도 '전체 검색'으로 동작)
+    // -----------------------------------------------------------------
+    // if (shape === '전체' || color === '전체') {
+    //   Alert.alert(...);
+    //   return;
+    // }
 
-    // API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
-    const searchParams = {
-      shape: shape, // 필수
-      color: color, // 필수
+    // 2. API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
+    const searchQuery = {
+      shape: shape === '전체' ? undefined : shape,
+      color: color === '전체' ? undefined : color,
       form: type === '전체' ? undefined : type,
       imprint: identifier || undefined,
       name: product || undefined,
       company: company || undefined,
     };
 
-    // -----------------------------------------------------------------
-    // (추가) API로 보낼 파라미터 객체를 콘솔에 출력
-    // -----------------------------------------------------------------
-    console.log('API로 전송할 검색 파라미터:', searchParams);
-
-    setIsLoading(true);
-
-    try {
-      // 1. postSearch API 호출 (실제 GET /search 요청)
-      const searchResults = await postSearch(searchParams);
-
-      // (추가) API가 빈 배열을 반환했을 경우 (검색 결과 없음)
-      if (!searchResults || searchResults.length === 0) {
-        Alert.alert(
-          '검색 결과 없음',
-          '일치하는 알약 정보를 찾을 수 없습니다.'
-        );
-      } else {
-        // 2. 결과 목록 화면(SearchResultListScreen)으로 '목록' 데이터 전달
-        navigation.navigate('SearchResultListScreen', {
-          searchResults: searchResults,
-        });
-      }
-
-    } catch (error) { 
-      console.error('검색 중 오류 발생:', error); // 콘솔에 전체 에러 기록
-      
-      // 400 에러 (필수 값 누락 등)
-      if (axios.isAxiosError(error) && error.response?.status === 400) {
-        Alert.alert('검색 오류 (400)', error.response.data?.error || '잘못된 요청입니다. (필수 값 누락)');
-      
-      // (수정) 400 외의 다른 Axios 에러 (Network Error, Timeout, 500 등)
-      // 'error.message'를 Alert에 직접 표시
-      } else if (axios.isAxiosError(error)) { 
-        Alert.alert('오류', error.message);
-      
-      // Axios가 아닌 일반 에러
-      } else {
-        Alert.alert('앱 오류', '알 수 없는 오류가 발생했습니다.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // 3. (수정) 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
+    //    이제 searchQuery가 { undefined, undefined, ... } (빈 객체)여도
+    //    '전체 검색' (page=1)으로 동작할 것입니다.
+    navigation.navigate('SearchResultListScreen', {
+      searchQuery: searchQuery, // imageResults 대신 searchQuery 전달
+    });
   };
 
   return (
@@ -199,16 +158,12 @@ export default function DirectSearchScreen() {
           <TouchableOpacity
             style={styles.searchButton}
             onPress={handleSearch}
-            disabled={isLoading} // 로딩 중 버튼 비활성화
           >
             <Feather name="search" size={18} color="#fff" />
             <Text style={styles.searchButtonText}>검색하기</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* 로딩 오버레이 */}
-      <LoadingOverlay visible={isLoading} message="알약을 검색 중입니다..." />
     </SafeAreaView>
   );
 }

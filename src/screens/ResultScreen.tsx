@@ -81,9 +81,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             )}
           </View>
 
-          {/* ----------------------------------------------------------------- */}
-          {/* (수정) 알약의 물리적 식별 정보 (최종 명세 반영) */}
-          {/* ----------------------------------------------------------------- */}
+          {/* 알약의 물리적 식별 정보 (최종 명세 반영) */}
           <View style={styles.identBox}>
             {/* 각인 (앞/뒤) */}
             <View style={styles.markContainer}>
@@ -123,7 +121,6 @@ export default function ResultScreen({ route, navigation }: Props) {
               </View>
             </View>
           </View>
-          {/* ----------------------------------------------------------------- */}
 
           {/* 알약의 상세 정보 (InfoRow 컴포넌트 사용) */}
           <View style={styles.infoBox}>
@@ -271,8 +268,8 @@ const styles = StyleSheet.create({
     minHeight: 30,
   },
   markText: { fontSize: 14, fontWeight: '700', color: '#000' },
-  // 크기, 성상
-  identInfo: { gap: 6 }, // (수정) 항목 간 간격
+  // 크기, 모양, 형태, 색상
+  identInfo: { gap: 6 },
   identRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -304,7 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'left', // 왼쪽 정렬
     marginRight: 4,
-    width: 110, // (수정) '주의사항경고'가 잘리지 않게 너비 증가
+    width: 110, // '주의사항경고'를 위해 너비 조정
   },
   infoValue: {
     flex: 1,

@@ -68,8 +68,8 @@ export default function PillSearchScreen() {
       const historyData = await getRecent();
       // (수정) 2개만 보여줌
       setHistory(historyData.slice(0, 2));
-    } catch (error) {
-      console.error('getRecent API 오류:', error);
+    } catch (error: any) {
+      console.error('getRecent API 오류:', error.message);
       setHistory([]);
     }
   };
@@ -97,12 +97,9 @@ export default function PillSearchScreen() {
       // 2초마다 상태를 체크하는 폴링(Polling) 구현
       let status = 'PENDING';
       let attempts = 0;
-      while (status === 'PENDING' && attempts < 30) {
+      while (status === 'PENDING' && attempts < 30) { // 30번(60초) 시도
         attempts++;
-        // -----------------------------------------------------------------
-        // (수정) `(${attempts}번째)` 카운터 텍스트 제거
-        // -----------------------------------------------------------------
-        setMessage(`분석 상태 확인 중...`);
+        setMessage(`분석 상태 확인 중...`); // 카운터 텍스트 제거
         const statusResponse = await getStatus(task_id); // 2. 상태 확인
         status = statusResponse.status;
 
@@ -113,7 +110,7 @@ export default function PillSearchScreen() {
       // 3. 최종 상태 확인
       if (status === 'SUCCESS') {
         setMessage('결과를 가져오는 중입니다...');
-        // 4. getResult는 이제 '2D 배열' (PillSearchSummary[][])을 반환
+        // 4. (수정) getResult는 이제 '2D 배열' (PillSearchSummary[][])을 반환
         const resultGroups = await getResult(task_id);
 
         if (!resultGroups || resultGroups.length === 0) {
@@ -122,7 +119,7 @@ export default function PillSearchScreen() {
             '이미지와 일치하는 알약을 찾을 수 없습니다.',
           );
         } else {
-          // 5. 'ImageResultGroupScreen'(신규)으로 2D 배열 전달
+          // 5. (수정) 'ImageResultGroupScreen'(신규)으로 2D 배열 전달
           navigation.navigate('ImageResultGroupScreen', {
             imageResults: resultGroups,
           });
@@ -132,9 +129,9 @@ export default function PillSearchScreen() {
       } else {
         Alert.alert('오류', '알약 분석에 실패했습니다.');
       }
-    } catch (err) {
-      console.error(err);
-      Alert.alert('오류', '알약을 분석하는 중 문제가 발생했습니다.');
+    } catch (err: any) {
+      console.error('이미지 분석 오류:', err.message);
+      Alert.alert('오류', err.message || '알약을 분석하는 중 문제가 발생했습니다.');
     } finally {
       setIsLoading(false);
       setMessage('');
@@ -174,9 +171,9 @@ export default function PillSearchScreen() {
       const detailResult = await getDetail(pill.id);
       // 2. ResultScreen으로 이동
       navigation.navigate('ResultScreen', { result: detailResult });
-    } catch (error) {
-      console.error('getDetail API 오류:', error);
-      Alert.alert('오류', '상세 정보를 불러오는데 실패했습니다.');
+    } catch (error: any) {
+      console.error('getDetail API 오류:', error.message);
+      Alert.alert('오류', error.message || '상세 정보를 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -319,15 +316,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20, // 세로 여백
   },
-  // 카메라/사진/검색 버튼 (간격 축소)
+  // 카메라/사진/검색 버튼 (요청하신 값으로 수정)
   optionBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    // -----------------------------------------------------------------
-    // (수정) 요청하신 paddingVertical, marginVertical 값으로 변경
-    // -----------------------------------------------------------------
     paddingVertical: 25, // 버튼 높이
     marginVertical: 13, // 버튼 간 격
   },

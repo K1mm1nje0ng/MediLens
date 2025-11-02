@@ -1,63 +1,56 @@
-/**
- * src/types/navigation.ts
- *
- * 앱 내비게이션 스택과 화면 간 파라미터 타입을 정의
- */
-
-// 1. 상세 정보 타입 (GET /detail API 최종 명세 기반)
+// API 응답 타입 (상세 정보) - 최종 명세서 기준
 export interface PillResultData {
-  // --- API 명세서에 있는 필드 ---
-  id: string; // "code"
-  pillName: string; // "제품명"
-  company: string; // "업체명"
-  effects: string; // "효능"
-  usage: string; // "사용법"
-  warnings: string; // "주의사항"
-  warningAlert: string; // "주의사항경고"
-  sideEffects: string; // "부작용"
-  storage: string; // "보관법"
-  imageUrl: string; // "이미지" (프록시 URL)
-  
-  sizeLong: string; // "장축"
-  sizeShort: string; // "단축"
-  sizeThick: string; // "두께" (sizeThic -> sizeThick 오타 수정)
-  
-  imprint1: string; // "각인_1" (imprintFront -> imprint1)
-  imprint2: string; // "각인_2" (imprintBack -> imprint2)
-
-  color1: string; // "색_1" (신규)
-  color2: string; // "색_2" (신규)
-  shape: string; // "모양" (신규)
-  form: string; // "형태" (신규)
-  
-  // --- (제거) ---
-  // description: string; // "성상" (제거됨)
+  id: string;
+  pillName: string;   // 제품명
+  company: string;      // 업체명
+  effects: string;      // 효능
+  usage: string;        // 사용법
+  warnings: string;     // 주의사항
+  warningAlert: string; // 주의사항경고
+  sideEffects: string;  // 부작용
+  storage: string;      // 보관법
+  imageUrl: string;     // 이미지
+  imprint1: string;     // 각인_1
+  imprint2: string;     // 각인_2
+  sizeLong: string;     // 장축
+  sizeShort: string;    // 단축
+  sizeThick: string;    // 두께
+  shape: string;        // 모양
+  form: string;         // 형태
+  color1: string;       // 색_1
+  color2: string;       // 색_2
 }
 
-// 2. 요약 정보 타입 (GET /search, /result, /recent API 응답)
+// 검색 결과 '요약' 타입 (목록용)
 export interface PillSearchSummary {
-  id: string; // API의 'code'
-  pillName: string; // API의 'pill_info'
-  imageUrl: string; // API의 'image' (프록시 URL)
+  id: string;       // code
+  pillName: string; // pill_info
+  imageUrl: string; // image (프록시 URL로 변환됨)
 }
 
-// 3. 앱 전체 네비게이션 스택 정의
+// 앱 내 화면 이동(네비게이션) 규칙 정의
 export type RootStackParamList = {
-  PillSearchScreen: undefined; // 메인 화면
-  DirectSearchScreen: undefined; // 직접 검색
-  
-  // 검색 결과 목록 (1D 배열)
-  SearchResultListScreen: {
-    searchResults: PillSearchSummary[]; // 1D 배열
-  };
+  // 메인 화면
+  PillSearchScreen: undefined;
 
-  // 상세 결과 (상세 정보 '객체'를 받음)
-  ResultScreen: { result: PillResultData };
+  // 직접 검색 화면
+  DirectSearchScreen: undefined;
 
-  // 이미지 분석 결과 '그룹' 화면
+  // (신규) 이미지 분석 결과 (알약 그룹 목록)
+  // 2D 배열을 파라미터로 받음
   ImageResultGroupScreen: {
-    imageResults: PillSearchSummary[][]; // 2D 배열
+    imageResults: PillSearchSummary[][];
   };
+
+  // 검색 결과 목록 화면 (1D)
+  SearchResultListScreen: {
+    // 1D 배열(이미지 검색) 또는 검색어(직접 검색)
+    imageResults?: PillSearchSummary[]; 
+    searchQuery?: any; 
+  };
+
+  // 최종 상세 결과 화면
+  ResultScreen: { result: PillResultData };
 };
 
 

@@ -10,55 +10,58 @@ import { RootStackParamList } from './src/types/navigation';
 import PillSearchScreen from './src/screens/PillSearchScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import DirectSearchScreen from './src/screens/DirectSearchScreen';
+// (신규) 1D/2D 배열 처리를 위한 화면 import
 import SearchResultListScreen from './src/screens/SearchResultListScreen';
-// (신규) 이미지 분석 그룹 화면 임포트
 import ImageResultGroupScreen from './src/screens/ImageResultGroupScreen';
 
 // Stack Navigator 생성 (타입 지정)
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// 앱의 루트 컴포넌트
 function App(): React.JSX.Element {
   return (
-    // 네비게이션 컨테이너
+    // 네비게이션 컨테이너: 전체 앱을 네비게이션 구조로 감쌈
     <NavigationContainer>
       {/* 상태 표시줄 설정 */}
       <StatusBar
-        hidden={false}
-        backgroundColor="#ffffff"
-        barStyle="dark-content"
+        hidden={false} // 상태 표시줄 표시
+        backgroundColor="#ffffff" // Android 배경색
+        barStyle="dark-content" // 아이콘/텍스트 색상 (밝은 배경용)
       />
 
       {/* Stack 네비게이터 설정 */}
       <Stack.Navigator initialRouteName="PillSearchScreen">
-        {/* 1. 메인 화면 */}
+        {/* 메인 화면: 알약 검색 메뉴 */}
         <Stack.Screen
           name="PillSearchScreen"
           component={PillSearchScreen}
-          options={{ headerShown: false }} // 기본 헤더 숨김
+          options={{ headerShown: false }} // React Navigation 기본 헤더 숨김
         />
-        {/* 2. 상세 결과 화면 */}
-        <Stack.Screen
-          name="ResultScreen"
-          component={ResultScreen}
-          options={{ headerShown: false }}
-        />
-        {/* 3. 직접 검색 화면 */}
+
+        {/* 직접 검색 화면 */}
         <Stack.Screen
           name="DirectSearchScreen"
           component={DirectSearchScreen}
           options={{ headerShown: false }}
         />
-        {/* 4. 검색 결과 '목록' 화면 */}
+
+        {/* (신규) 이미지 분석 결과 (알약 그룹 목록) */}
+        <Stack.Screen
+          name="ImageResultGroupScreen"
+          component={ImageResultGroupScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* (신규) 검색 결과 목록 화면 (1D) */}
         <Stack.Screen
           name="SearchResultListScreen"
           component={SearchResultListScreen}
           options={{ headerShown: false }}
         />
-        {/* 5. (신규) 이미지 분석 '그룹' 화면 */}
+        
+        {/* 분석 결과 화면 */}
         <Stack.Screen
-          name="ImageResultGroupScreen"
-          component={ImageResultGroupScreen}
+          name="ResultScreen"
+          component={ResultScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
@@ -67,6 +70,7 @@ function App(): React.JSX.Element {
 }
 
 export default App;
+
 
 
 

@@ -1,109 +1,184 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
+  FlatList,
   TouchableOpacity,
-  Alert,
   Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// 네비게이션 임포트
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-// -----------------------------------------------------------------
-// (수정) PillSearchSummary 타입 임포트 (단순화된 버전)
-// -----------------------------------------------------------------
+// 네비게이션 훅 임포트
+import {
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+// 타입 임포트
 import { RootStackParamList, PillSearchSummary } from '../types/navigation';
-// 아이콘, API, 컴포넌트 임포트
+// 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
-import { getDetail } from '../api/pillApi';
+// API 함수 임포트
+import { getDetail, postSearch } from '../api/pillApi';
+// 로딩 오버레이 (상세 정보 로딩용)
 import LoadingOverlay from '../components/LoadingOverlay';
 
-// 내비게이션 파라미터 타입 (검색 결과 '요약' 목록)
-type Props = NativeStackScreenProps<
+// 이 스크린에서 사용할 네비게이션과 라우트 prop 타입
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'SearchResultListScreen'
+>;
+type ScreenRouteProp = RouteProp<
   RootStackParamList,
   'SearchResultListScreen'
 >;
 
-// 직접 검색 결과 '목록'을 표시하는 화면
-export default function SearchResultListScreen({ route, navigation }: Props) {
-  // 내비게이션 파라미터에서 검색 결과 목록(요약) 추출
-  const { searchResults } = route.params;
-  // 상세 정보 로딩 상태 (getDetail 호출 시)
-  const [isLoading, setIsLoading] = useState(false);
+// 검색 결과 '목록' (1D)을 표시하는 화면
+export default function SearchResultListScreen() {
+  // 네비게이션 및 라우트 훅
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<ScreenRouteProp>();
 
-  // 목록의 항목을 탭했을 때 실행되는 핸들러
-  const handleItemPress = async (pillId: string) => {
+  // 상태 관리
+  const [isLoading, setIsLoading] = useState(false); // 상세 정보 로딩
+  const [isListLoading, setListLoading] = useState(false); // 목록 로딩 (초기/추가)
+  
+  // `imageResults` (1D) 또는 `searchQuery` (객체)를 파라미터로 받음
+  const { imageResults, searchQuery } = route.params;
+
+  // 페이지네이션 상태
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [results, setResults] = useState<PillSearchSummary[]>([]);
+
+  // `searchQuery` (직접 검색)로 API를 호출하는 함수
+  const loadSearchResults = async (query: any, pageNum: number) => {
+    // 중복/초과 로드 방지
+    if (isListLoading || (pageNum > totalPages && pageNum !== 1)) return;
+    
+    setListLoading(true);
+    try {
+      // 1. `page` 파라미터를 포함하여 `postSearch` API 호출
+      const response = await postSearch(query, pageNum); 
+      
+      // 2. `pill_results`와 `total_pages`를 상태에 저장
+      setResults(prev => 
+        pageNum === 1 ? response.pill_results : [...prev, ...response.pill_results]
+      );
+      setTotalPages(response.total_pages);
+      setPage(pageNum);
+
+    } catch (error: any) {
+      Alert.alert('오류', error.message || '검색 결과를 불러오는데 실패했습니다.');
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  // 화면이 처음 로드될 때 실행
+  useEffect(() => {
+    if (searchQuery) {
+      // 1. '직접 검색' (searchQuery)으로 진입한 경우: page 1로 API 호출
+      loadSearchResults(searchQuery, 1);
+    } else if (imageResults) {
+      // 2. '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
+      setResults(imageResults);
+      setTotalPages(1); // 이미지 검색은 페이지네이션이 없음
+    }
+  }, [searchQuery, imageResults]);
+
+  // 목록에서 알약 항목을 탭했을 때 핸들러
+  const handlePillSelect = async (pill: PillSearchSummary) => {
     setIsLoading(true);
     try {
-      // 1. 탭한 항목의 ID('code')로 getDetail API 호출 (상세 정보 요청)
-      const detailResult = await getDetail(pillId);
-
-      // 2. 상세 정보(detailResult)를 ResultScreen으로 전달
+      // 1. pill.id (code)로 상세 정보 API 호출
+      const detailResult = await getDetail(pill.id);
+      // 2. ResultScreen으로 이동 (상세 정보 전달)
       navigation.navigate('ResultScreen', { result: detailResult });
-    } catch (error) {
-      console.error('상세 정보 로드 오류:', error);
-      Alert.alert('오류', '상세 정보를 불러오는 데 실패했습니다.');
+    } catch (error: any) {
+      Alert.alert('오류', error.message || '상세 정보를 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // FlatList의 끝에 도달했을 때 다음 페이지 로드
+  const handleLoadMore = () => {
+    // 1. '직접 검색' (searchQuery)일 때만 다음 페이지 로드
+    // 2. 현재 페이지가 총 페이지보다 작을 때만
+    if (searchQuery && page < totalPages && !isListLoading) {
+      loadSearchResults(searchQuery, page + 1);
+    }
+  };
+
+  // FlatList의 각 항목(알약)을 렌더링
+  const renderItem = ({ item }: { item: PillSearchSummary }) => (
+    <TouchableOpacity
+      style={styles.itemContainer}
+      onPress={() => handlePillSelect(item)}
+    >
+      <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
+      <View style={styles.itemTextContainer}>
+        <Text style={styles.itemTitle} numberOfLines={1}>
+          {item.pillName}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={20} color="#666" />
+    </TouchableOpacity>
+  );
+
+  // FlatList의 하단 (로딩 스피너) 렌더링
+  const renderFooter = () => {
+    if (!isListLoading) return null; // 로딩 중이 아니면 숨김
+    return <ActivityIndicator size="large" color="#409F82" style={{ marginVertical: 20 }} />;
+  };
+
+  // FlatList의 '결과 없음' 렌더링
+  const renderEmpty = () => {
+    if (isListLoading && page === 1) return null; // '초기' 로딩 중에는 숨김
+    return (
+      <View style={styles.emptyContainer}>
+        <Feather name="search" size={50} color="#ccc" />
+        <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FEFB' }}>
       {/* 상단 헤더 (뒤로가기, 화면 제목) */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#000" />
+          <Feather name="arrow-left" size={24} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>검색 결과</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      {/* 로딩 오버레이 (getDetail 호출 시) */}
-      <LoadingOverlay visible={isLoading} message="상세 정보 로드 중..." />
-
-      {/* 메인 스크롤 뷰 */}
-      <ScrollView
-        style={styles.container}
+      {/* 결과 목록 FlatList */}
+      <FlatList
+        data={results}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.scroll}
-      >
-        {/* 검색 결과가 0건일 경우 */}
-        {searchResults.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Feather name="search" size={48} color="#999" />
-            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
-          </View>
-        ) : (
-          // 검색 결과 목록 렌더링
-          searchResults.map((item: PillSearchSummary) => (
-            <TouchableOpacity
-              key={item.id} // 'code'
-              style={styles.itemCard}
-              onPress={() => handleItemPress(item.id)}
-            >
-              {/* 알약 요약 이미지 */}
-              <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
-              <View style={styles.itemTextContainer}>
-                {/* 알약 이름 */}
-                <Text style={styles.itemTitle}>{item.pillName}</Text>
-                {/* ----------------------------------------------------------------- */}
-                {/* (수정) company, description 제거 (API가 제공하지 않음) */}
-                {/* ----------------------------------------------------------------- */}
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+        ListFooterComponent={renderFooter} // 로딩 스피너
+        ListEmptyComponent={renderEmpty} // 결과 없음
+        onEndReached={handleLoadMore} // 다음 페이지 로드
+        onEndReachedThreshold={0.5} // 50% 지점에서 로드
+      />
+
+      {/* 상세 정보 로딩 시 전체 화면 오버레이 */}
+      <LoadingOverlay visible={isLoading} message="상세 정보를 불러오는 중..." />
     </SafeAreaView>
   );
 }
 
 // 화면 스타일 정의
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FEFB' },
-  scroll: { padding: 20 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 60, flexGrow: 1 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -111,54 +186,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: '#eee',
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
-  // 검색 결과 목록 아이템 카드
-  itemCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 15,
+  // 목록 아이템 컨테이너
+  itemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginVertical: 8,
     elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
   },
-  // 목록 아이템 이미지
+  // 알약 이미지
   itemImage: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 8,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#f0f0f0',
     marginRight: 15,
   },
+  // 텍스트 영역
   itemTextContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  // 목록 아이템 제목 (알약 이름)
+  // 알약 이름
   itemTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '500',
+    color: '#333',
     marginBottom: 4,
   },
-  // -----------------------------------------------------------------
-  // (수정) itemSubtitle, itemDescription 스타일 제거
-  // -----------------------------------------------------------------
-  
-  // '검색 결과 없음' UI
+  // '결과 없음' 컨테이너
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingVertical: 100,
   },
   emptyText: {
     fontSize: 16,
     color: '#999',
-    marginTop: 16,
+    marginTop: 10,
   },
 });

@@ -6,11 +6,11 @@ from PIL import ImageFont, ImageDraw, Image
 
 # 로컬 모듈 임포트
 from object_detection import detect_pills
-from image_preprocessing import remove_background
+from image_preprocessing import remove_background  # ⚠️ 이 함수는 이제 1개의 인자(cropped_image)를 받습니다.
 from color_analysis import analyze_pill_colors
 from shape_analysis import classify_shape_with_ai
 from database_handler import load_database, find_best_match
-from imprint_analysis import get_imprint
+from imprint_analysis import get_imprint  # ⚠️ 이 파일이 image_preprocessing의 새 함수들을 import합니다.
 
 
 # 한글 텍스트를 이미지에 그리는 함수
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     DEBUG_MODE = True
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample.png"
+    IMAGE_PATH = "test_image/sample1.png"
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"
@@ -71,10 +71,17 @@ if __name__ == "__main__":
 
     for i, box in enumerate(pill_boxes):
         x1, y1, x2, y2 = box
+
+        # ⚠️ [수정됨] 1. 먼저 이미지를 자릅니다.
         cropped_pill = original_image[y1:y2, x1:x2]
+
+        if cropped_pill is None or cropped_pill.size == 0:
+            print(f"알약 #{i + 1}을 크롭하는 데 실패했습니다. 건너뜁니다.")
+            continue
 
         print(f"\n--- 알약 #{i + 1} 분석 시작 ---")
 
+        # ⚠️ [수정됨] 2. 잘라낸 이미지를 remove_background에 전달합니다.
         pill_without_bg, pill_mask = remove_background(cropped_pill.copy())
 
         # 색상 분석
@@ -84,7 +91,7 @@ if __name__ == "__main__":
 
         # 모양 분석을 위한 전처리 (스무딩 로직 포함)
         gray_pill = cv2.cvtColor(pill_without_bg, cv2.COLOR_BGR2GRAY)
-        _, binarized_image = cv2.threshold(gray_pill, 10, 255, cv2.THRESH_BINARY)
+        _, binarized_image = cv2.threshold(gray_pill, 1, 255, cv2.THRESH_BINARY)  # 10 -> 1 (배경이 0이므로)
 
         smoothed_binarized_image = binarized_image.copy()
         contours, _ = cv2.findContours(binarized_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -105,6 +112,7 @@ if __name__ == "__main__":
 
         # 각인 분석
         # get_imprint 함수에 debug=DEBUG_MODE 파라미터를 전달합니다.
+        # [수정] 원본 크롭 이미지(cropped_pill)를 전달해야 합니다.
         imprint_text = get_imprint(cropped_pill.copy(), pill_mask, debug=DEBUG_MODE)
         print(f"  - 인식된 각인: '{imprint_text}'")
 
@@ -129,7 +137,9 @@ if __name__ == "__main__":
             label = f"{top_candidate['pill_info']}"
 
             cv2.rectangle(original_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.rectangle(original_image, (x1, y1 - 25), (x1 + 200, y1), (0, 255, 0), -1)
+            # 텍스트 라벨 박스 크기 자동 조절 (임시)
+            label_box_width = len(label) * 12 + 10  # 한글 길이에 따라 대략적 계산
+            cv2.rectangle(original_image, (x1, y1 - 25), (x1 + label_box_width, y1), (0, 255, 0), -1)
             original_image = draw_korean_text(original_image, label, (x1, y1 - 25), FONT_PATH, 18, (0, 0, 0))
         else:
             print("  => 최종 식별 결과: 데이터베이스에서 일치하는 알약을 찾을 수 없습니다.")

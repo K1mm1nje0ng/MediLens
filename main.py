@@ -34,7 +34,9 @@ def draw_korean_text(image, text, position, font_path, font_size, font_color):
         font = ImageFont.load_default()
 
     draw.text(position, text, font=font, fill=font_color)
-    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+
+    # ⚠️ [수정] --- cv2.COLOR_RGB_BGR -> cv2.COLOR_RGB2BGR ---
+    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)  # ◀◀◀ 오타 수정 완료
     # -------------------------------------------------------
 
 
@@ -51,7 +53,7 @@ if __name__ == "__main__":
     DEBUG_MODE = False
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample1.png"  # ◀◀◀ 테스트할 이미지 경로
+    IMAGE_PATH = "test_image/sample.png"  # ◀◀◀ 테스트할 이미지 경로
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"

@@ -1,86 +1,75 @@
-import cv2
-import re
-import requests
-import json
-import uuid
-import time
-import base64
 import os
-from dotenv import load_dotenv
-
-# .env 파일에서 환경 변수 로드
-load_dotenv()
-
-# ⚠️ [수정] --- API URL과 Secret Key 모두 .env 파일에서 불러옵니다 ---
-API_URL = os.getenv("NAVER_CLOVA_API_URL").strip()
-SECRET_KEY = os.getenv("NAVER_CLOVA_API_KEY").strip()
+import logging
+import re
+import cv2
+from google.cloud import vision
+from google.api_core import exceptions as google_exceptions
 
 
-# --------------------------------------------------------------------
+# --- [수정된 부분: 파일 전체] ---
 
-
-# 네이버 CLOVA OCR API를 호출하는 단일 함수
-def recognize_text_naver_ocr(image):
+def init_google_vision():
     """
-    네이버 CLOVA OCR API를 호출하여 이미지에서 텍스트를 인식
+    Google Vision API 클라이언트를 초기화합니다.
+    main.py에서 load_dotenv()가 이미 실행되어
+    GOOGLE_APPLICATION_CREDENTIALS 환경 변수가 설정되어 있어야 합니다.
     """
-    if not API_URL or "YOUR_API_URL_HERE" in API_URL or not API_URL.startswith("https"):
-        print("    - [오류] .env 파일의 NAVER_CLOVA_API_URL이 잘못되었습니다.")
+    try:
+        # GOOGLE_APPLICATION_CREDENTIALS 환경 변수를 자동으로 읽어 클라이언트를 생성합니다.
+        client = vision.ImageAnnotatorClient()
+        # logging.info("Google Vision API 클라이언트가 성공적으로 초기화되었습니다.")
+        # ➔ main.py에서 이미 "GOOGLE OCR 모드"로 실행한다고 출력하므로 중복 로깅 제거
+        return client
+    except google_exceptions.DefaultCredentialsError as e:
+        logging.error(f"Google Vision API 인증 실패: {e}")
+        logging.error("GOOGLE_APPLICATION_CREDENTIALS 환경 변수가 올바르게 설정되었는지, .env 파일과 JSON 키 파일 경로를 확인하세요.")
+        return None
+    except Exception as e:
+        logging.error(f"Google Vision 클라이언트 초기화 중 알 수 없는 오류 발생: {e}")
+        return None
+
+
+# 이 모듈이 임포트될 때 클라이언트를 *한 번만* 초기화합니다.
+google_vision_client = init_google_vision()
+
+
+def analyze_imprint_google(image):
+    """
+    Google Vision API를 사용하여 이미지에서 텍스트(각인)를 추출합니다.
+    main.py에서 이 함수를 직접 호출합니다.
+    """
+    if google_vision_client is None:
+        # ➔ main.py 실행 시 보셨던 "초기화되지 않았다"는 오류가 여기서 발생합니다.
+        logging.warning("- Google Vision 클라이언트가 초기화되지 않아 OCR을 건너뜁니다.")
         return ""
-
-    if not SECRET_KEY or "YOUR_SECRET_KEY" in SECRET_KEY:
-        print("    - [오류] .env 파일의 NAVER_CLOVA_API_KEY가 잘못되었습니다.")
-        return ""
-
-    # 이미지를 base64로 인코딩
-    _, buffer = cv2.imencode('.jpg', image)
-    image_base64 = base64.b64encode(buffer).decode('utf-8')
-
-    request_json = {
-        'images': [{'format': 'jpg', 'name': 'pill_image', 'data': image_base64}],
-        'requestId': str(uuid.uuid4()),
-        'version': 'V2',
-        'timestamp': int(round(time.time() * 1000))
-    }
-
-    payload = json.dumps(request_json).encode('UTF-8')
-    headers = {
-        'X-OCR-SECRET': SECRET_KEY,
-        'Content-Type': 'application/json'
-    }
 
     try:
-        response = requests.post(API_URL, headers=headers, data=payload)
-        response.raise_for_status()  # HTTP 오류가 발생하면 예외 발생
-        result = response.json()
+        # OpenCV 이미지를 Google Vision이 읽을 수 있는 형식으로 변환
+        _, encoded_image = cv2.imencode('.png', image)
+        content = encoded_image.tobytes()
+        vision_image = vision.Image(content=content)
 
-        # 인식된 텍스트들을 하나로 합침
-        full_text = ""
-        for field in result['images'][0]['fields']:
-            full_text += field['inferText']
+        # 텍스트 감지 (OCR)
+        response = google_vision_client.text_detection(image=vision_image)
+        texts = response.text_annotations
 
-        cleaned_text = re.sub(r'[^A-Z0-9]', '', full_text.upper())
-        return cleaned_text
+        if response.error.message:
+            logging.error(f"Google Vision API 오류: {response.error.message}")
+            return ""
 
-    except requests.exceptions.RequestException as e:
-        print(f"    - 네이버 OCR API 호출 오류: {e}")
-        # 오류 상세 내용 출력 (디버깅용)
-        try:
-            print(f"    - 응답 내용: {response.text}")
-        except:
-            pass
+        if texts:
+            # 첫 번째 텍스트(전체 감지 내용)를 사용
+            detected_text = texts[0].description
+            # OCR 결과 정제: 공백, 특수문자 제거, 영문/숫자만 남김
+            cleaned_text = re.sub(r'[\W_]+', '', detected_text).strip()
+
+            if cleaned_text:
+                # main.py에서 "인식된 각인:"을 출력하므로 여기서는 반환만 합니다.
+                return cleaned_text
+
+        # main.py에서 "인식된 각인: ''"으로 출력될 것이므로 별도 로깅 안 함
         return ""
 
-
-# --- 결과를 보내는 메인 함수 ---
-def analyze_imprint_naver(original_pill_image):
-    """
-    YOLO가 잘라낸 '원본' 이미지를 네이버 OCR로 분석하여 각인 텍스트를 추출
-    """
-
-    # OCR 분석
-    print("    - 네이버 OCR 분석 시도...")
-    imprint_text = recognize_text_naver_ocr(original_pill_image)  # ◀◀ 원본 크롭 이미지 전달
-    print(f"      => 결과: '{imprint_text}'")
-
-    return imprint_text
+    except Exception as e:
+        logging.error(f"Google Vision OCR 실행 중 오류: {e}")
+        return ""

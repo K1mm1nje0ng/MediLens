@@ -1,5 +1,13 @@
-import cv2
 import os
+from dotenv import load_dotenv
+
+# --- [수정된 부분] ---
+# 다른 모든 import 보다 먼저 .env 파일을 로드합니다.
+# 이 코드가 가장 위에 있어야 합니다.
+load_dotenv()
+# --- [수정된 부분 끝] ---
+
+import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from PIL import ImageFont, ImageDraw, Image
@@ -13,6 +21,9 @@ from database_handler import load_database, find_best_match
 
 # ⚠️ [수정] --- Naver OCR 임포트 제거 ---
 from imprint_analysis import get_imprint as get_imprint_tesseract
+#
+# ❗️ .env가 로드된 *다음에* 이 모듈을 임포트해야 합니다.
+#
 from imprint_analysis_google import analyze_imprint_google  # ◀◀◀ Google/Tesseract만 남김
 
 
@@ -34,9 +45,7 @@ def draw_korean_text(image, text, position, font_path, font_size, font_color):
         font = ImageFont.load_default()
 
     draw.text(position, text, font=font, fill=font_color)
-
-    # ⚠️ [수정] --- cv2.COLOR_RGB_BGR -> cv2.COLOR_RGB2BGR ---
-    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)  # ◀◀◀ 오타 수정 완료
+    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
     # -------------------------------------------------------
 
 
@@ -53,7 +62,7 @@ if __name__ == "__main__":
     DEBUG_MODE = False
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample.png"  # ◀◀◀ 테스트할 이미지 경로
+    IMAGE_PATH = "test_image/sample1.png"  # ◀◀◀ 테스트할 이미지 경로
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"

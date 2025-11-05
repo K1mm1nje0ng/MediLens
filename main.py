@@ -21,15 +21,21 @@ from imprint_analysis_google import analyze_imprint_google  # ◀◀◀ Google/T
 
 # 한글 텍스트를 이미지에 그리는 함수
 def draw_korean_text(image, text, position, font_path, font_size, font_color):
+    """
+    OpenCV 이미지 위에 한글 텍스트를 그림
+    """
     pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(pil_image)
+
     try:
         font = ImageFont.truetype(font_path, font_size)
     except IOError:
         print(f"오류: '{font_path}' 폰트 파일을 찾을 수 없습니다. 기본 폰트를 사용합니다.")
         font = ImageFont.load_default()
+
     draw.text(position, text, font=font, fill=font_color)
-    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB_BGR)
+    return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+    # -------------------------------------------------------
 
 
 # --- 메인 실행 로직 ---

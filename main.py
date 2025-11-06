@@ -1,11 +1,6 @@
 import os
 from dotenv import load_dotenv
-
-# --- [수정된 부분] ---
-# 다른 모든 import 보다 먼저 .env 파일을 로드합니다.
-# 이 코드가 가장 위에 있어야 합니다.
 load_dotenv()
-# --- [수정된 부분 끝] ---
 
 import cv2
 import numpy as np
@@ -18,16 +13,9 @@ from image_preprocessing import remove_background
 from color_analysis import analyze_pill_colors
 from shape_analysis import classify_shape_with_ai
 from database_handler import load_database, find_best_match
-
-# ⚠️ [수정] --- Naver OCR 임포트 제거 ---
 from imprint_analysis import get_imprint as get_imprint_tesseract
-#
-# ❗️ .env가 로드된 *다음에* 이 모듈을 임포트해야 합니다.
-#
 from imprint_analysis_google import analyze_imprint_google  # ◀◀◀ Google/Tesseract만 남김
 
-
-# ---------------------------------------------
 
 
 # 한글 텍스트를 이미지에 그리는 함수
@@ -51,18 +39,13 @@ def draw_korean_text(image, text, position, font_path, font_size, font_color):
 
 # --- 메인 실행 로직 ---
 if __name__ == "__main__":
-
-    # ⚠️ [수정] --- OCR 엔진 선택 스위치 ---
-    # "google" : Google Vision API (권장)
-    # "tesseract" : Tesseract (로컬 무료, 정확도 낮음)
-    OCR_ENGINE = "google"  # ◀◀◀ Naver 옵션 제거
+    OCR_ENGINE = "google"
     # ------------------------------------
-
     # Tesseract 전용 디버그 모드
     DEBUG_MODE = False
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample1.png"  # ◀◀◀ 테스트할 이미지 경로
+    IMAGE_PATH = "test_image/sample.png"
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"
@@ -134,7 +117,6 @@ if __name__ == "__main__":
             shape_result = classify_shape_with_ai(smoothed_binarized_image, shape_model)
         print(f"  - AI 모양 분석 결과: {shape_result}")
 
-        # ⚠️ [수정] --- Naver OCR 관련 'elif' 블록 제거 ---
         imprint_text = ""
         if OCR_ENGINE == "google":
             print("  - [Google API] 각인 분석 중...")

@@ -1,15 +1,13 @@
-# database_handler.py
-
 import pandas as pd
 import numpy as np
+from fuzzywuzzy import fuzz
 
 # 색상명과 RGB 값 매핑 (수정/추가 가능)
-# 데이터베이스에 있는 다른 색상(예: '투명', '자홍')이 있다면 여기에 추가해주세요.
 COLOR_RGB_MAP = {
-    '하양': [255, 255, 255],  '검정': [0, 0, 0],        '회색': [149, 165, 166],
-    '빨강': [231, 76, 60],    '주황': [230, 126, 34],   '노랑': [241, 196, 15],
-    '초록': [39, 174, 96],    '파랑': [52, 152, 219],   '남색': [0, 0, 128],
-    '보라': [142, 68, 173],   '분홍': [231, 127, 153],  '갈색': [160, 82, 45]
+    '하양': [255, 255, 255], '검정': [0, 0, 0], '회색': [149, 165, 166],
+    '빨강': [231, 76, 60], '주황': [230, 126, 34], '노랑': [241, 196, 15],
+    '초록': [39, 174, 96], '파랑': [52, 152, 219], '남색': [0, 0, 128],
+    '보라': [142, 68, 173], '분홍': [231, 127, 153], '갈색': [160, 82, 45]
 }
 
 # RGB 색 공간에서 이론상 가장 먼 거리
@@ -76,19 +74,6 @@ def load_database(db_path):
         return None
 
 
-def get_char_type(s):
-    """문자열의 종류(알파벳, 숫자, 혼합 등)를 반환하는 헬퍼 함수"""
-    if not s:  # 문자열이 비어있는 경우
-        return "none"
-    if s.isalpha():
-        return "alpha"
-    if s.isnumeric():
-        return "numeric"
-    if s.isalnum():
-        return "alnum"
-    return "other"
-
-
 def calculate_score(row, shape_probabilities, colors, imprint):
     """
     데이터베이스의 약 정보와 분석된 정보를 비교하여 유사도 점수를 계산
@@ -112,51 +97,46 @@ def calculate_score(row, shape_probabilities, colors, imprint):
     color_similarity = calculate_color_similarity_score(colors, row['color'])
     score += color_similarity * MAX_COLOR_SCORE
 
-    # 3. 각인 점수 계산
-    imprint_recognized = imprint.upper()
+    # --- 각인 점수 계산 로직 수정 ---
+    imprint_recognized = imprint.upper().strip()
+    imprint_score = 0
 
-    if not imprint_recognized:
-        imprint_score = 0
-    else:
-        imprint1_db = str(row.get('text', '')).upper()
-        imprint2_db = str(row.get('text2', '')).upper()
+    # DB 각인 정보 정리 ('nan' 제거)
+    imprint1_db = str(row.get('text', '')).upper().replace('NAN', '').strip()
+    imprint2_db = str(row.get('text2', '')).upper().replace('NAN', '').strip()
+    db_imprint_full = (imprint1_db + " " + imprint2_db).strip()
 
-        dist1 = levenshtein_distance(imprint_recognized, imprint1_db)
-        dist2 = levenshtein_distance(imprint_recognized, imprint2_db)
+    if imprint_recognized:
+        # 3-1. 탐지된 각인이 있는 경우
+        if db_imprint_full:
+            # DB에도 각인이 있으면 유사도 계산
 
-        min_dist = min(dist1, dist2)
+            # 앞면, 뒷면 각각의 부분 일치 점수 계산
+            similarity1 = fuzz.partial_ratio(imprint_recognized, imprint1_db) if imprint1_db else 0
+            similarity2 = fuzz.partial_ratio(imprint_recognized, imprint2_db) if imprint2_db else 0
 
-        db_imprint_to_compare = imprint1_db if dist1 <= dist2 else imprint2_db
-        recognized_type = get_char_type(imprint_recognized)
-        db_type = get_char_type(db_imprint_to_compare)
+            # DB 앞면+뒷면 합친 것과도 비교
+            similarity_full = fuzz.partial_ratio(imprint_recognized, db_imprint_full)
 
-        if recognized_type in ["alpha", "numeric"] and db_type in ["alpha", "numeric"] and recognized_type != db_type:
-            imprint_score = 0
+
+            # 가장 높은 유사도 점수를 채택
+            max_similarity = max(similarity1, similarity2, similarity_full)
+
+            # 0~100점 스케일의 유사도를 0~MAX_IMPRINT_SCORE (40점) 스케일로 변환
+            imprint_score = (max_similarity / 100.0) * MAX_IMPRINT_SCORE
         else:
-            imprint_score = max(0, MAX_IMPRINT_SCORE - (min_dist * 10))
+            # 탐지 각인은 있으나 DB 각인이 없으면 0점
+            imprint_score = 0
+
+    elif not db_imprint_full:
+        # 3-2. 탐지된 각인도 없고, DB 각인도 없으면 10점 보너스
+        # (각인이 없는 알약끼리 일치)
+        imprint_score = 10
+
+        # 3-3. (탐지 각인은 없으나 DB 각인이 있는 경우 -> 0점)
 
     score += imprint_score
     return score
-
-
-def levenshtein_distance(s1, s2):
-    """
-    두 문자열 간의 레벤슈타인 거리를 계산
-    """
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
-    if len(s2) == 0:
-        return len(s1)
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
-        current_row = [i + 1]
-        for j, c2 in enumerate(s2):
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (c1 != c2)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-    return previous_row[-1]
 
 
 def find_best_match(pill_db, identified_shape_info, identified_colors, identified_imprint):
@@ -164,7 +144,7 @@ def find_best_match(pill_db, identified_shape_info, identified_colors, identifie
     분석된 정보를 바탕으로 데이터베이스에서 가장 일치하는 알약 후보를 찾음.
     """
 
-    # [수정됨] 문자열, 딕셔너리 등 어떤 형태로 들어와도 처리 가능하도록 파싱 로직 추가
+    # 문자열, 딕셔너리 등 어떤 형태로 들어와도 처리 가능하도록 파싱 로직 추가
     shape_probabilities = {}
     if isinstance(identified_shape_info, str) and identified_shape_info:
         # '타원형 (78.55%), 원형 (17.31%)' 과 같은 문자열을 파싱하여 딕셔너리로 변환
@@ -179,18 +159,32 @@ def find_best_match(pill_db, identified_shape_info, identified_colors, identifie
     elif isinstance(identified_shape_info, dict):
         shape_probabilities = identified_shape_info
 
+    # 모양 정보가 없으면(파싱 실패) 빈 딕셔너리 유지
+    if not shape_probabilities:
+        print("  - [경고] 모양 확률 정보가 파싱되지 않았습니다. 모양 점수가 0이 됩니다.")
+
     primary_candidates = []
     for row in pill_db:
         # shape_probabilities의 키(모양 이름)를 기준으로 후보군 필터링
         shape_match = row['shape'] in shape_probabilities
-        color_match = any(color in row['color'] for color in identified_colors.split())
 
-        if shape_match or color_match:
+        # (수정) identified_colors가 비어있을 수 있으므로 split() 전 확인
+        color_list = identified_colors.split() if identified_colors else []
+        color_match = any(color in row['color'] for color in color_list)
+
+        # 모양이나 색상 중 하나라도 관련이 있거나, 각인이라도 관련있으면 후보군에 포함
+        imprint_match = False
+        if identified_imprint and (
+                identified_imprint in str(row.get('text', '')) or identified_imprint in str(row.get('text2', ''))):
+            imprint_match = True
+
+        if shape_match or color_match or imprint_match:
             primary_candidates.append(row)
 
     if not primary_candidates:
-        print("  - [검색 실패] 데이터베이스에서 어떤 후보도 찾을 수 없습니다.")
-        return []
+        # 필터링 실패 시 전체 DB를 대상으로 검색 시도
+        print("  - [알림] 1차 필터링 후보가 없습니다. 전체 DB를 대상으로 점수를 계산합니다.")
+        primary_candidates = pill_db
 
     candidates = []
     for row in primary_candidates:
@@ -201,4 +195,6 @@ def find_best_match(pill_db, identified_shape_info, identified_colors, identifie
         candidates.append({'pill_info': pill_info, 'score': score})
 
     candidates.sort(key=lambda x: x['score'], reverse=True)
-    return [c for c in candidates if c['score'] > 0][:10]
+
+    # 점수가 0점 초과인 후보만 10개까지 반환
+    return [c for c in candidates if c['score'] > 0][:5]

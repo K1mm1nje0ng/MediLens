@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow.keras.preprocessing.image import img_to_array
 
 
+
 # --- AI 모양 분류 (모든 신뢰도 출력 및 비율 유지) ---
 def classify_shape_with_ai(binarized_image, model, target_size=224):
     """

@@ -123,7 +123,7 @@ if __name__ == "__main__":
         if shape_model:
             shape_result = classify_shape_with_ai(smoothed_binarized_image, shape_model)
         print(f"  - AI 모양 분석 결과: {shape_result}")
-        all_shape_results.append(shape_result)  # ✨ [수정] 종합 모양 리스트에 추가
+        all_shape_results.append(shape_result)  #  종합 모양 리스트에 추가
 
         imprint_text = ""
         if OCR_ENGINE == "google":

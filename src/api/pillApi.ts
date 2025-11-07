@@ -13,7 +13,7 @@ const handleApiResponse = async (response: Response) => {
       // 400 Bad Request처럼, 서버가 JSON 에러 메시지를 보냈을 경우
       const errorData = await response.json();
       errorMessage = errorData.error || errorMessage;
-    } catch (e) {
+    } catch {
       // JSON 파싱 실패
     }
     // DirectSearchScreen의 catch 블록으로 에러를 던짐

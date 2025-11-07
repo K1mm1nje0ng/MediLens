@@ -18,13 +18,17 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // 타입 임포트
-import { RootStackParamList, PillSearchSummary } from '../types/navigation';
+import {
+  RootStackParamList,
+  PillSearchSummary,
+  SearchQuery, // 1. (수정) 'SearchQuery' 타입 임포트 추가
+} from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 // API 함수 임포트
 import { getDetail, postSearch } from '../api/pillApi';
-// 로딩 오버레이 (상세 정보 로딩용)
-import LoadingOverlay from '../components/LoadingOverlay';
+// 2. (수정) 'LoadingOverlay' 컴포넌트 임포트 추가
+import LoadingOverlay from '../components/LoadingOverlay'; 
 
 // 이 스크린에서 사용할 네비게이션과 라우트 prop 타입
 type NavigationProp = NativeStackNavigationProp<
@@ -55,9 +59,10 @@ export default function SearchResultListScreen() {
   const [results, setResults] = useState<PillSearchSummary[]>([]);
 
   // `searchQuery` (직접 검색)로 API를 호출하는 함수
-  const loadSearchResults = async (query: any, pageNum: number) => {
+  const loadSearchResults = useCallback(async (query: SearchQuery, pageNum: number) => {
     // 중복/초과 로드 방지
-    if (isListLoading || (pageNum > totalPages && pageNum !== 1)) return;
+    // (pageNum === 1은 초기 로드이므로 totalPages 검사 안 함)
+    if (isListLoading || (pageNum > totalPages && pageNum !== 1)) return; 
     
     setListLoading(true);
     try {
@@ -76,7 +81,7 @@ export default function SearchResultListScreen() {
     } finally {
       setListLoading(false);
     }
-  };
+  }, [isListLoading, totalPages]); // 이 함수가 의존하는 상태들
 
   // 화면이 처음 로드될 때 실행
   useEffect(() => {
@@ -85,10 +90,11 @@ export default function SearchResultListScreen() {
       loadSearchResults(searchQuery, 1);
     } else if (imageResults) {
       // 2. '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
+      //    (imageResults는 1D 배열이라고 가정, 2D 배열 로직은 ImageResultGroupScreen이 처리)
       setResults(imageResults);
       setTotalPages(1); // 이미지 검색은 페이지네이션이 없음
     }
-  }, [searchQuery, imageResults]);
+  }, [searchQuery, imageResults, loadSearchResults]); // 의존성 배열
 
   // 목록에서 알약 항목을 탭했을 때 핸들러
   const handlePillSelect = async (pill: PillSearchSummary) => {
@@ -136,9 +142,9 @@ export default function SearchResultListScreen() {
     return <ActivityIndicator size="large" color="#409F82" style={{ marginVertical: 20 }} />;
   };
 
-  // FlatList의 '결과 없음' 렌더링
+  // (추가) FlatList의 '결과 없음' 렌더링
   const renderEmpty = () => {
-    if (isListLoading && page === 1) return null; // '초기' 로딩 중에는 숨김
+    if (isListLoading) return null; // 초기 로딩 중에는 숨김
     return (
       <View style={styles.emptyContainer}>
         <Feather name="search" size={50} color="#ccc" />
@@ -158,7 +164,7 @@ export default function SearchResultListScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* 결과 목록 FlatList */}
+      {/* (수정) 결과 목록 FlatList */}
       <FlatList
         data={results}
         renderItem={renderItem}
@@ -171,7 +177,7 @@ export default function SearchResultListScreen() {
       />
 
       {/* 상세 정보 로딩 시 전체 화면 오버레이 */}
-      <LoadingOverlay visible={isLoading} message="상세 정보를 불러오는 중..." />
+      <LoadingOverlay visible={isLoading} message="상세 정보 로딩 중..." />
     </SafeAreaView>
   );
 }
@@ -210,7 +216,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     marginRight: 15,
   },
-  // 텍스트 영역
+  // 텍스트 영역 (이름)
   itemTextContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
+  // 1. (제거) 'Alert'는 이 화면에서 더 이상 사용하지 않음
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // 네비게이션 훅 임포트
@@ -15,9 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
-// 로딩 오버레이 임포트
-import LoadingOverlay from '../components/LoadingOverlay';
-// (참고) API는 여기서 호출하지 않고, SearchResultListScreen으로 파라미터 전달
+// 2. (제거) 'postSearch'와 'LoadingOverlay', 'axios'는 이 화면에서 더 이상 사용하지 않음
 
 // 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
@@ -45,6 +43,8 @@ export default function DirectSearchScreen() {
   const [identifier, setIdentifier] = useState(''); // 'imprint' (API는 각인_1, 각인_2)
   const [product, setProduct] = useState(''); // 'name'
   const [company, setCompany] = useState(''); // 'company'
+
+  // 3. (제거) 'isLoading' 상태는 이 화면에서 더 이상 필요하지 않음
 
   // 옵션 버튼 그룹(모양, 제형, 색상) 렌더링 함수
   const renderOptionGroup = (
@@ -77,28 +77,23 @@ export default function DirectSearchScreen() {
 
   // '검색하기' 버튼 핸들러 (페이지네이션 적용)
   const handleSearch = () => {
-    // -----------------------------------------------------------------
-    // (수정) "모양/색상 필수" 유효성 검사 코드를 제거합니다.
-    // (새 명세서: 파라미터가 없어도 '전체 검색'으로 동작)
-    // -----------------------------------------------------------------
-    // if (shape === '전체' || color === '전체') {
-    //   Alert.alert(...);
-    //   return;
-    // }
+    // (제거) "모양/색상 필수" 유효성 검사 (API가 '전체 검색'을 지원)
 
     // 2. API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
     const searchQuery = {
       shape: shape === '전체' ? undefined : shape,
       color: color === '전체' ? undefined : color,
       form: type === '전체' ? undefined : type,
-      imprint: identifier || undefined,
+      // (참고) API 명세가 '각인_1', '각인_2'를 받지만,
+      // 'imprint' 파라미터가 어떻게 처리되는지 백엔드 확인 필요
+      // 여기서는 'imprint'로 전송 (pillApi.ts에서 '각인_1'로 바꿀 수도 있음)
+      imprint: identifier || undefined, 
       name: product || undefined,
       company: company || undefined,
     };
 
     // 3. (수정) 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
-    //    이제 searchQuery가 { undefined, undefined, ... } (빈 객체)여도
-    //    '전체 검색' (page=1)으로 동작할 것입니다.
+    //    API 호출은 SearchResultListScreen이 담당
     navigation.navigate('SearchResultListScreen', {
       searchQuery: searchQuery, // imageResults 대신 searchQuery 전달
     });
@@ -158,12 +153,15 @@ export default function DirectSearchScreen() {
           <TouchableOpacity
             style={styles.searchButton}
             onPress={handleSearch}
+            // 4. (제거) disabled={isLoading} 제거
           >
             <Feather name="search" size={18} color="#fff" />
             <Text style={styles.searchButtonText}>검색하기</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* 5. (제거) <LoadingOverlay /> 제거 */}
     </SafeAreaView>
   );
 }

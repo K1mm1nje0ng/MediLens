@@ -21,13 +21,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   RootStackParamList,
   PillSearchSummary,
-  SearchQuery, // 1. (수정) 'SearchQuery' 타입 임포트 추가
+  SearchQuery, 
 } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 // API 함수 임포트
 import { getDetail, postSearch } from '../api/pillApi';
-// 2. (수정) 'LoadingOverlay' 컴포넌트 임포트 추가
 import LoadingOverlay from '../components/LoadingOverlay'; 
 
 // 이 스크린에서 사용할 네비게이션과 라우트 prop 타입
@@ -60,9 +59,7 @@ export default function SearchResultListScreen() {
 
   // `searchQuery` (직접 검색)로 API를 호출하는 함수
   const loadSearchResults = useCallback(async (query: SearchQuery, pageNum: number) => {
-    // 중복/초과 로드 방지
-    // (pageNum === 1은 초기 로드이므로 totalPages 검사 안 함)
-    if (isListLoading || (pageNum > totalPages && pageNum !== 1)) return; 
+    // (무한 루프 방지) 중복 로드 방지 로직은 handleLoadMore에 있음
     
     setListLoading(true);
     try {
@@ -74,14 +71,18 @@ export default function SearchResultListScreen() {
         pageNum === 1 ? response.pill_results : [...prev, ...response.pill_results]
       );
       setTotalPages(response.total_pages);
-      setPage(pageNum);
+      setPage(pageNum); // 현재 페이지 번호 업데이트
 
     } catch (error: any) {
       Alert.alert('오류', error.message || '검색 결과를 불러오는데 실패했습니다.');
     } finally {
       setListLoading(false);
     }
-  }, [isListLoading, totalPages]); // 이 함수가 의존하는 상태들
+  // -----------------------------------------------------------------
+  // (수정) `totalPages`는 이 함수 내부에서 읽지(read) 않으므로
+  //        의존성 배열에서 제거 (ESLint 경고 해결)
+  // -----------------------------------------------------------------
+  }, []); 
 
   // 화면이 처음 로드될 때 실행
   useEffect(() => {
@@ -90,7 +91,6 @@ export default function SearchResultListScreen() {
       loadSearchResults(searchQuery, 1);
     } else if (imageResults) {
       // 2. '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
-      //    (imageResults는 1D 배열이라고 가정, 2D 배열 로직은 ImageResultGroupScreen이 처리)
       setResults(imageResults);
       setTotalPages(1); // 이미지 검색은 페이지네이션이 없음
     }
@@ -110,21 +110,25 @@ export default function SearchResultListScreen() {
       setIsLoading(false);
     }
   };
-
-  // FlatList의 끝에 도달했을 때 다음 페이지 로드
+  
+  // FlatList의 끝에 도달하면 이 함수가 호출됨
   const handleLoadMore = () => {
-    // 1. '직접 검색' (searchQuery)일 때만 다음 페이지 로드
-    // 2. 현재 페이지가 총 페이지보다 작을 때만
+    // (무한 루프 방지)
+    // - '직접 검색'일 때만
+    // - (page=1)이 (totalPages=60)보다 작고
+    // - (isListLoading=false) 현재 로딩 중이 아닐 때만!
     if (searchQuery && page < totalPages && !isListLoading) {
+      // 'page + 1' (즉, 1+1 = 2)로 다음 페이지 API 호출
       loadSearchResults(searchQuery, page + 1);
     }
   };
 
   // FlatList의 각 항목(알약)을 렌더링
-  const renderItem = ({ item }: { item: PillSearchSummary }) => (
+  const renderItem = ({ item, index }: { item: PillSearchSummary; index: number }) => (
     <TouchableOpacity
       style={styles.itemContainer}
       onPress={() => handlePillSelect(item)}
+      key={`${item.id}-${index}`}
     >
       <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
       <View style={styles.itemTextContainer}>
@@ -138,7 +142,8 @@ export default function SearchResultListScreen() {
 
   // FlatList의 하단 (로딩 스피너) 렌더링
   const renderFooter = () => {
-    if (!isListLoading) return null; // 로딩 중이 아니면 숨김
+    // 1페이지 로드 중에는 스피너 숨김 (초기 로딩이므로)
+    if (!isListLoading || page === 1) return null;
     return <ActivityIndicator size="large" color="#409F82" style={{ marginVertical: 20 }} />;
   };
 
@@ -164,15 +169,15 @@ export default function SearchResultListScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* (수정) 결과 목록 FlatList */}
+      {/* 결과 목록 FlatList */}
       <FlatList
         data={results}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={styles.scroll}
         ListFooterComponent={renderFooter} // 로딩 스피너
         ListEmptyComponent={renderEmpty} // 결과 없음
-        onEndReached={handleLoadMore} // 다음 페이지 로드
+        onEndReached={handleLoadMore} // 0단계: 사용자가 스크롤을 끝까지 내리면...
         onEndReachedThreshold={0.5} // 50% 지점에서 로드
       />
 

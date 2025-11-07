@@ -14,7 +14,7 @@ const handleApiResponse = async (response: Response) => {
       const errorData = await response.json();
       errorMessage = errorData.error || errorMessage;
     } catch {
-      // JSON 파싱 실패
+      // JSON 파싱 실패 (에러 메시지는 이미 errorMessage에 있음)
     }
     // DirectSearchScreen의 catch 블록으로 에러를 던짐
     throw new Error(errorMessage);
@@ -52,24 +52,30 @@ export const getStatus = async (
 };
 
 // -----------------------------------------------------------------
-// 3. 실제 API: 작업 결과 조회 (GET /result/:taskId) - (fetch 사용)
-// (데이터 매핑: 2D 배열 반환)
+// 3. (수정) 실제 API: 작업 결과 조회 (GET /result/:taskId) - (fetch 사용)
+// (반환 타입: 2D 배열 -> { processedImage, resultGroups })
 // -----------------------------------------------------------------
-export const getResult = async (taskId: string): Promise<PillSearchSummary[][]> => {
+export const getResult = async (
+  taskId: string,
+): Promise<{ processedImage: string; resultGroups: PillSearchSummary[][] }> => {
   const url = `${BASE_URL}/result/${taskId}`;
   const response = await fetch(url);
-  const data = await handleApiResponse(response); // { pill_results: [ [...] ] }
+  const data = await handleApiResponse(response); // { processed_image: "...", pill_results: [ [...] ] }
 
-  const resultGroups = data.pill_results;
-
-  // 2D 배열 매핑 (API가 2D 배열을 반환한다고 가정)
-  return resultGroups.map((group: any[]) =>
+  // 1. 2D 배열 매핑
+  const resultGroups = data.pill_results.map((group: any[]) =>
     group.map((item: any) => ({
       id: item.code,
       pillName: item.pill_info,
       imageUrl: `${BASE_URL}/image-proxy?url=${encodeURIComponent(item.image)}`,
     })),
   );
+  
+  // 2. (수정) base64 이미지와 2D 배열을 객체로 묶어 반환
+  return {
+    processedImage: data.processed_image,
+    resultGroups: resultGroups,
+  };
 };
 
 // -----------------------------------------------------------------
@@ -125,9 +131,7 @@ export const getDetail = async (
   const response = await fetch(url);
   const data = await handleApiResponse(response);
 
-  // -----------------------------------------------------------------
-  // (수정) "필수 항목"으로 확인되었으므로, 불필요한 `|| ''` 폴백 제거
-  // -----------------------------------------------------------------
+  // 한글 키(API)를 영어 키(App)로 매핑 (최종 필드 기준)
   return {
     id: pillId.toString(),
     pillName: data['제품명'],

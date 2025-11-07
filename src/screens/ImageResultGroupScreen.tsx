@@ -1,26 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react'; // useState 임포트 추가
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  Modal, // Modal 임포트 추가
+  Dimensions // 화면 크기를 얻기 위해 Dimensions 임포트 추가
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// 네비게이션 훅 임포트
 import {
   useNavigation,
   useRoute,
   RouteProp,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-// 타입 임포트
 import { RootStackParamList, PillSearchSummary } from '../types/navigation';
-// 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 
-// 이 스크린에서 사용할 네비게이션과 라우트 prop 타입
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'ImageResultGroupScreen'
@@ -30,50 +29,27 @@ type ScreenRouteProp = RouteProp<
   'ImageResultGroupScreen'
 >;
 
-// 이미지 분석 결과 (2D 배열)를 '그룹'으로 묶어 보여주는 화면
+const { width, height } = Dimensions.get('window'); // 화면 너비와 높이 가져오기
+
 export default function ImageResultGroupScreen() {
-  // 네비게이션 및 라우트 훅
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ScreenRouteProp>();
 
-  // `PillSearchScreen`으로부터 2D 배열(`imageResults`)을 받음
-  const { imageResults } = route.params;
+  const { imageResults, processedImage } = route.params;
 
-  // '알약 1', '알약 2' 그룹을 탭했을 때 핸들러
+  // -----------------------------------------------------------------
+  // (추가) 이미지 확대 모달 상태 관리
+  // -----------------------------------------------------------------
+  const [isImageModalVisible, setImageModalVisible] = useState(false);
+
   const handleGroupSelect = (group: PillSearchSummary[]) => {
-    // 1. 선택한 그룹(1D 배열)의 후보 목록을 `SearchResultListScreen`으로 전달
+    if (!group || group.length === 0) {
+      Alert.alert('오류', '선택한 그룹에 후보 알약이 없습니다.');
+      return;
+    }
     navigation.navigate('SearchResultListScreen', {
-      imageResults: group, // 1D 배열 전달
+      imageResults: group,
     });
-  };
-
-  // FlatList의 각 항목(알약 그룹)을 렌더링
-  const renderItem = ({ item, index }: { item: PillSearchSummary[], index: number }) => {
-    // 2D 배열의 각 1D 배열(group)을 렌더링
-    // 각 그룹의 '첫 번째' 알약을 대표 이미지/이름으로 사용
-    const representativePill = item[0];
-    if (!representativePill) return null; // 빈 그룹은 렌더링 안 함
-
-    return (
-      <TouchableOpacity
-        style={styles.itemContainer}
-        onPress={() => handleGroupSelect(item)} // 1D 배열(group) 전달
-      >
-        {/* 대표 알약 이미지 */}
-        <Image 
-          source={{ uri: representativePill.imageUrl }} 
-          style={styles.itemImage} 
-        />
-        {/* 그룹 정보 (알약 N, 후보 N개) */}
-        <View style={styles.itemTextContainer}>
-          <Text style={styles.itemTitle}>알약 {index + 1}</Text>
-          <Text style={styles.itemSubtitle}>
-            {representativePill.pillName} (외 {item.length - 1}개 후보)
-          </Text>
-        </View>
-        <Feather name="chevron-right" size={20} color="#666" />
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -83,29 +59,88 @@ export default function ImageResultGroupScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>이미지 분석 결과</Text>
+        <Text style={styles.headerTitle}>분석 결과 그룹</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      {/* 알약 그룹 목록 (FlatList) */}
-      <FlatList
-        data={imageResults} // 2D 배열을 data로 사용
-        renderItem={renderItem}
-        keyExtractor={(item, index) => `group-${index}`}
-        contentContainerStyle={styles.scroll}
-        ListHeaderComponent={() => (
-          <Text style={styles.infoText}>
-            사진에서 {imageResults.length}개의 알약 그룹을 찾았습니다.
-          </Text>
-        )}
-      />
+      {/* 결과 그룹 목록을 보여주는 스크롤 뷰 */}
+      <ScrollView contentContainerStyle={styles.scroll}>
+        
+        {/* ----------------------------------------------------------------- */}
+        {/* (수정) processed_image 섹션: 텍스트 제거 및 TouchableOpacity로 감싸기 */}
+        {/* ----------------------------------------------------------------- */}
+        <TouchableOpacity
+          style={styles.processedImageBox}
+          onPress={() => setImageModalVisible(true)} // 이미지 탭 시 모달 열기
+        >
+          {/* <Text style={styles.processedImageLabel}>AI가 감지한 알약</Text> <- 이 줄 제거 */}
+          <Image
+            source={{ uri: `data:image/jpeg;base64,${processedImage}` }}
+            style={styles.processedImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        
+        <Text style={styles.infoText}>
+          사진에서 {imageResults.length}개의 알약 그룹이 감지되었습니다.
+        </Text>
+
+        {imageResults.map((group, groupIndex) => {
+          const representativePill = group[0];
+          if (!representativePill) return null;
+
+          return (
+            <TouchableOpacity
+              key={`${representativePill.id}-${groupIndex}`}
+              style={styles.groupContainer}
+              onPress={() => handleGroupSelect(group)}
+            >
+              <Image
+                source={{ uri: representativePill.imageUrl }}
+                style={styles.groupImage}
+              />
+              <View style={styles.groupTextContainer}>
+                <Text style={styles.groupTitle}>알약 {groupIndex + 1}</Text>
+                <Text style={styles.groupSubtitle}>
+                  '{representativePill.pillName}' 포함 {group.length}개의 후보
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#666" />
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* (추가) 이미지 확대 모달 */}
+      {/* ----------------------------------------------------------------- */}
+      <Modal
+        visible={isImageModalVisible}
+        transparent={true}
+        onRequestClose={() => setImageModalVisible(false)} // Android 뒤로가기 버튼 처리
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setImageModalVisible(false)}
+            >
+              <Feather name="x" size={30} color="#FFF" />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${processedImage}` }}
+              style={styles.fullScreenImage}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// 화면 스타일 정의
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, paddingBottom: 60 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 60, paddingTop: 10 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -116,49 +151,91 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
-  // 안내 텍스트
+  
+  processedImageBox: {
+    width: '100%',
+    // backgroundColor: '#000', // (수정) 검정색 배경 제거
+    backgroundColor: '#F4F4F4', // (수정) 연한 회색 배경으로 변경
+    borderRadius: 12,
+    marginBottom: 20,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1, // (추가) 경계선 추가
+    borderColor: '#EEEEEE', // (추가) 경계선 색상
+  },
+  
+  processedImage: {
+    width: '100%',
+    height: 200,
+  },
+
   infoText: {
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
     marginVertical: 20,
   },
-  // 목록 아이템 컨테이너 (알약 그룹)
-  itemContainer: {
+  groupContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    marginVertical: 8,
-    elevation: 2,
+    marginVertical: 10,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
-  // 대표 알약 이미지
-  itemImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+  groupImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
     marginRight: 15,
   },
-  // 텍스트 영역 (그룹명, 후보 개수)
-  itemTextContainer: {
+  groupTextContainer: {
     flex: 1,
     justifyContent: 'center',
   },
-  // 그룹명 (알약 N)
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+  groupTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111',
     marginBottom: 4,
   },
-  // 후보 정보 (대표 이름 + 외 N개)
-  itemSubtitle: {
-    fontSize: 13,
-    color: '#666',
+  groupSubtitle: {
+    fontSize: 14,
+    color: '#555',
+  },
+
+  // -----------------------------------------------------------------
+  // (추가) 이미지 확대 모달 스타일
+  // -----------------------------------------------------------------
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', // 어두운 배경
+  },
+  modalView: {
+    width: width, // 화면 전체 너비
+    height: height, // 화면 전체 높이
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent', // 모달 뷰 자체는 투명하게
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50, // SafeAreaView를 고려하여 상단 여백 조절
+    right: 20,
+    zIndex: 1, // 이미지 위에 버튼이 보이도록
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 5,
   },
 });

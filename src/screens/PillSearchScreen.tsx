@@ -97,7 +97,7 @@ export default function PillSearchScreen() {
       // 2초마다 상태를 체크하는 폴링(Polling) 구현
       let status = 'PENDING';
       let attempts = 0;
-      while (status === 'PENDING' && attempts < 30) { // 30번(60초) 시도
+      while (status === 'PENDING' && attempts < 90) { // 30번(60초) 시도
         attempts++;
         setMessage(`분석 상태 확인 중...`); // 카운터 텍스트 제거
         const statusResponse = await getStatus(task_id); // 2. 상태 확인
@@ -110,8 +110,10 @@ export default function PillSearchScreen() {
       // 3. 최종 상태 확인
       if (status === 'SUCCESS') {
         setMessage('결과를 가져오는 중입니다...');
-        // 4. (수정) getResult는 이제 '2D 배열' (PillSearchSummary[][])을 반환
-        const resultGroups = await getResult(task_id);
+        // -----------------------------------------------------------------
+        // 4. (수정) getResult는 { processedImage, resultGroups } 객체를 반환
+        // -----------------------------------------------------------------
+        const { processedImage, resultGroups } = await getResult(task_id);
 
         if (!resultGroups || resultGroups.length === 0) {
           Alert.alert(
@@ -119,9 +121,12 @@ export default function PillSearchScreen() {
             '이미지와 일치하는 알약을 찾을 수 없습니다.',
           );
         } else {
-          // 5. (수정) 'ImageResultGroupScreen'(신규)으로 2D 배열 전달
+          // -----------------------------------------------------------------
+          // 5. (수정) 'ImageResultGroupScreen'으로 2D 배열과 base64 이미지 전달
+          // -----------------------------------------------------------------
           navigation.navigate('ImageResultGroupScreen', {
             imageResults: resultGroups,
+            processedImage: processedImage,
           });
         }
       } else if (status === 'PENDING') {
@@ -190,7 +195,7 @@ export default function PillSearchScreen() {
           color="#409F82"
           style={{ marginRight: 15 }}
         />
-        <Text style={styles.title}>프로그램 이름</Text>
+        <Text style={styles.title}>메디렌즈</Text>
       </View>
 
       {/* '무슨 약을 찾으시나요?' 검색 옵션 카드 */}
@@ -247,12 +252,12 @@ export default function PillSearchScreen() {
         ) : (
           <>
             {/* 최근 검색 상위 2개 목록 렌더링 (이미지, 텍스트) */}
-            {history.map((pill) => (
+            {history.map((pill, index) => (
               <TouchableOpacity
-                key={pill.id}
+                key={`${pill.id}-${index}`}
                 style={styles.recentItem}
                 activeOpacity={0.7}
-                onPress={() => handleRecentSearch(pill)} // (수정) getDetail 호출
+                onPress={() => handleRecentSearch(pill)}
               >
                 {/* 알약 이미지 */}
                 <Image

@@ -29,12 +29,8 @@ export interface PillSearchSummary {
   id: string; // code
   pillName: string; // pill_info
   imageUrl: string; // image
-  // (참고) company, description은 목록 API에서 반환 안 함
 }
 
-// -----------------------------------------------------------------
-// (수정) `SearchQuery` 타입을 export (내보내기) 추가
-// -----------------------------------------------------------------
 // '직접 검색' (GET /search) API에 전송할 쿼리 파라미터 객체 타입
 export type SearchQuery = {
   shape?: string;
@@ -53,13 +49,17 @@ export type RootStackParamList = {
   // (수정) 이미지 분석 결과 (2D 배열)를 받는 화면
   ImageResultGroupScreen: {
     imageResults: PillSearchSummary[][]; // 2D 배열
+    // -----------------------------------------------------------------
+    // (추가) 명세서의 'processed_image' (base64 문자열)
+    // -----------------------------------------------------------------
+    processedImage: string; 
   };
 
-  // (수정) 검색 결과 목록 (1D)을 표시하는 화면
+  // (수정) SearchResultListScreen이 받을 파라미터 변경
   SearchResultListScreen: {
-    // 1D 배열 (이미지 분석에서 1D 그룹을 선택)
+    // 1. (이미지 분석) 1D 배열을 받거나
     imageResults?: PillSearchSummary[]; 
-    // 또는 검색 쿼리 객체 (직접 검색)
+    // 2. (직접 검색) 검색 쿼리 객체를 받음
     searchQuery?: SearchQuery;
   };
   

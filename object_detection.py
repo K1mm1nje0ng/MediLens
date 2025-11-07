@@ -1,7 +1,7 @@
+
 import cv2
 import numpy as np
 from ultralytics import YOLO
-
 
 # 알약 탐지 함수
 def detect_pills(image_path, model_path='weights/detection_model.pt'):
@@ -58,5 +58,5 @@ def detect_pills(image_path, model_path='weights/detection_model.pt'):
             dummy_image = np.full((600, 800, 3), 255, dtype=np.uint8)
         h, w, _ = dummy_image.shape
         return [
-            [int(w * 0.1), int(h * 0.1), int(w * 0.4), int(h * 0.4)],
+            [int( w *0.1), int( h *0.1), int( w *0.4), int( h *0.4)],
         ]

@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import cv2
@@ -15,7 +16,6 @@ from shape_analysis import classify_shape_with_ai
 from database_handler import load_database, find_best_match
 from imprint_analysis import get_imprint as get_imprint_tesseract
 from imprint_analysis_google import analyze_imprint_google  # ◀◀◀ Google/Tesseract만 남김
-
 
 
 # 한글 텍스트를 이미지에 그리는 함수
@@ -77,6 +77,12 @@ if __name__ == "__main__":
 
     pill_boxes = detect_pills(IMAGE_PATH, YOLO_MODEL_PATH)
 
+    # ---  최종 종합 분석을 위한 정보 수집기 ---
+    all_shape_results = []
+    all_color_sets = set()
+    all_imprint_texts = []
+    # ------------------------------------------------
+
     for i, box in enumerate(pill_boxes):
         x1, y1, x2, y2 = box
 
@@ -87,7 +93,7 @@ if __name__ == "__main__":
             print(f"알약 #{i + 1}을 크롭하는 데 실패했습니다. 건너뜁니다.")
             continue
 
-        print(f"\n--- 알약 #{i + 1} 분석 시작 ---")
+        print(f"\n--- 알약 #{i + 1} 개별 분석 시작 ---")
 
         # 2. 배경 제거 (모양/색상 분석용)
         pill_without_bg, pill_mask = remove_background(cropped_pill.copy())
@@ -96,6 +102,7 @@ if __name__ == "__main__":
         rgb_list, color_list = analyze_pill_colors(pill_without_bg)
         color_candidates_str = " ".join(sorted(color_list))
         print(f"  - 식별된 색상: {color_candidates_str} (대표 RGB: {rgb_list[0] if rgb_list else 'N/A'})")
+        all_color_sets.update(color_list)  # 종합 색상 세트에 추가
 
         # 모양 분석을 위한 전처리
         gray_pill = cv2.cvtColor(pill_without_bg, cv2.COLOR_BGR2GRAY)
@@ -116,6 +123,7 @@ if __name__ == "__main__":
         if shape_model:
             shape_result = classify_shape_with_ai(smoothed_binarized_image, shape_model)
         print(f"  - AI 모양 분석 결과: {shape_result}")
+        all_shape_results.append(shape_result)  # ✨ [수정] 종합 모양 리스트에 추가
 
         imprint_text = ""
         if OCR_ENGINE == "google":
@@ -129,29 +137,63 @@ if __name__ == "__main__":
             print(f"  - [오류] OCR_ENGINE 설정이 잘못되었습니다: {OCR_ENGINE}")
 
         print(f"  - 인식된 각인: '{imprint_text}'")
+        if imprint_text:  # 빈 각인이 아니면 종합 리스트에 추가
+            all_imprint_texts.append(imprint_text)
         # ---------------------------------------------
 
-        # 최종 알약 추측
-        candidate_pills = find_best_match(pill_db, shape_result, color_candidates_str, imprint_text)
-        # ---------------------------------------------------
+        #  루프 내에서는 최종 후보를 계산하지 않음.
+        #  대신 이미지에 사각형만 먼저 그림
+        cv2.rectangle(original_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-        # 알약 후보군 출력
         print("  ---------------------------------")
-        if candidate_pills:
-            print("  => 최종 식별 후보:")
-            for candidate in candidate_pills:
-                print(f"     - {candidate['pill_info']} (점수: {candidate['score']})")
 
-            top_candidate = candidate_pills[0]
-            label = f"{top_candidate['pill_info']}"
+    # --- 모든 알약 분석 후, 종합하여 최종 후보 계산 ---
+    print("\n\n---  최종 종합 분석 결과  ---")
 
-            cv2.rectangle(original_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    # 1. 종합 각인 (중복 제거 및 공백으로 합치기)
+    combined_imprint = " ".join(sorted(list(set(all_imprint_texts))))
+    print(f"  - (종합) 식별된 각인: '{combined_imprint}'")
+
+    # 2. 종합 색상
+    combined_colors = " ".join(sorted(list(all_color_sets)))
+    print(f"  - (종합) 식별된 색상: {combined_colors}")
+
+    # 3. 종합 모양 (첫 번째 알약의 분석 결과를 대표로 사용)
+    combined_shape_info = ""
+    if all_shape_results:
+        combined_shape_info = all_shape_results[0]
+        # (참고) 모든 모양이 일치하는지 확인할 수 있으나,
+        # '앞/뒤'를 가정한 것이므로 첫 번째(또는 가장 신뢰도 높은) 모양을 대표로 사용
+        print(f"  - (종합) AI 모양 분석 (대표): {combined_shape_info}")
+    else:
+        print("  - (종합) AI 모양 분석: 분석 결과 없음")
+
+    # --- 데이터베이스 매칭 ---
+    print("\n\n  ---------------------------------")
+    print("  =>  최종 식별 후보 (종합) ")
+
+    final_candidate_pills = find_best_match(pill_db, combined_shape_info, combined_colors, combined_imprint)
+
+    if final_candidate_pills:
+        for candidate in final_candidate_pills:
+            print(f"     - {candidate['pill_info']} (점수: {candidate['score']})")
+
+        # --- 최종 결과 이미지에 라벨 그리기 ---
+        # 1등 후보의 정보로 모든 박스에 라벨을 붙임
+        top_candidate = final_candidate_pills[0]
+        label = f"{top_candidate['pill_info']}"
+
+        for box in pill_boxes:
+            x1, y1, _, _ = box
+            # 폰트 크기(18)에 맞춰 대략적인 라벨 박스 계산
             label_box_width = len(label) * 12 + 10
             cv2.rectangle(original_image, (x1, y1 - 25), (x1 + label_box_width, y1), (0, 255, 0), -1)
             original_image = draw_korean_text(original_image, label, (x1, y1 - 25), FONT_PATH, 18, (0, 0, 0))
-        else:
-            print("  => 최종 식별 결과: 데이터베이스에서 일치하는 알약을 찾을 수 없습니다.")
-        print("  ---------------------------------")
+
+    else:
+        print("  => 최종 식별 결과: 데이터베이스에서 일치하는 알약을 찾을 수 없습니다.")
+    print("  ---------------------------------")
+
 
     final_output_path = os.path.join(OUTPUT_DIR, "final_result.jpg")
     cv2.imwrite(final_output_path, original_image)

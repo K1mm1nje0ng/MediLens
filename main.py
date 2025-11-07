@@ -45,7 +45,7 @@ if __name__ == "__main__":
     DEBUG_MODE = False
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample.png"
+    IMAGE_PATH = "test_image/sample1.png"
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"

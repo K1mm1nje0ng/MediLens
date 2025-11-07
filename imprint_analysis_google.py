@@ -5,7 +5,6 @@ import logging
 from google.cloud import vision
 
 
-
 KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 try:

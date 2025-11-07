@@ -36,7 +36,7 @@ def classify_shape_with_ai(binarized_image, model, target_size=224):
         # 6. 예측 실행
         predictions = model.predict(scaled_array[np.newaxis, ...])[0]
 
-        shape_map = {0: '원형', 1: '장방형', 2: '타원형'}  # 모델 학습 시 클래스 순서와 동일해야 함
+        shape_map = {0: '원형', 1: '타원형', 2: '장방형'}  # 모델 학습 시 클래스 순서와 동일해야 함
 
         # 모든 클래스에 대한 신뢰도 문자열 생성
         results = []
@@ -52,4 +52,5 @@ def classify_shape_with_ai(binarized_image, model, target_size=224):
 
     except Exception as e:
         print(f"    - 모양 분류 모델 로딩 또는 예측 실패: {e}")
+
         return "AI 모델 분석 실패 (임시)"

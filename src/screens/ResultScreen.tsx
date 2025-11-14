@@ -7,11 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Modal, // 1. (유지) Modal 임포트
+  Modal, 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-// 타입 임포트 (PillResultData 사용)
+// 타입 임포트
 import { RootStackParamList, PillResultData } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
@@ -26,9 +26,6 @@ export default function ResultScreen({ route, navigation }: Props) {
   const { result } = route.params as { result: PillResultData };
   // 네트워크 이미지 로딩 상태 관리
   const [isImageLoading, setIsImageLoading] = useState(true);
-  // -----------------------------------------------------------------
-  // 2. (수정) 모달 상태 변수 이름을 'isImageModalVisible'로 변경
-  // -----------------------------------------------------------------
   const [isImageModalVisible, setImageModalVisible] = useState(false);
 
   // 이미지 로드 실패 시 에러 로그 콜백
@@ -69,7 +66,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             </Text>
           </View>
 
-          {/* 3. (수정) 이미지를 탭하면 'isImageModalVisible'을 true로 변경 */}
+          {/* 이미지를 탭하면 'isImageModalVisible'을 true로 변경 */}
           <TouchableOpacity
             style={styles.imageBox}
             activeOpacity={0.8}
@@ -131,7 +128,7 @@ export default function ResultScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          {/* 알약의 상세 정보 (InfoRow 컴포넌트 사용) */}
+          {/* 알약의 상세 정보 */}
           <View style={styles.infoBox}>
             <InfoRow label="제품명" value={result.pillName} />
             <InfoRow label="업체명" value={result.company} />
@@ -159,13 +156,11 @@ export default function ResultScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 4. (수정) 'ImageResultGroupScreen'과 동일한 스타일의 모달로 교체 */}
-      {/* ----------------------------------------------------------------- */}
+      {/* 전체 화면 이미지 모달 */}
       <Modal
         visible={isImageModalVisible}
         transparent={true}
-        onRequestClose={() => setImageModalVisible(false)} // Android 뒤로가기 버튼 처리
+        onRequestClose={() => setImageModalVisible(false)} 
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
@@ -176,7 +171,6 @@ export default function ResultScreen({ route, navigation }: Props) {
             >
               <Feather name="x" size={30} color="#FFF" />
             </TouchableOpacity>
-            {/* 5. (수정) base64 대신 'result.imageUrl'을 사용 */}
             <Image
               source={{ uri: result.imageUrl }}
               style={styles.fullScreenImage}
@@ -210,7 +204,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
   return (
     <View style={styles.infoRow}>
-      {/* (사용자 요청) 라벨 텍스트 뒤에 '|' 파이프 제거 */}
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>
         {displayText}{' '}
@@ -325,24 +318,22 @@ const styles = StyleSheet.create({
     marginRight: 10,
     flexShrink: 1,
   },
-  // (사용자 요청) infoBox padding: 5
   infoBox: { backgroundColor: '#FFFFFF', padding: 5 },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginVertical: 6,
   },
-  // (사용자 요청) infoLabel 스타일
   infoLabel: {
     fontWeight: '700',
     color: '#1C1B14',
     fontSize: 16,
-    textAlign: 'left', // 왼쪽 정렬
-    marginRight: 5, // 라벨과 값 사이의 간격
-    width: 90, // 고정 너비
+    textAlign: 'left', 
+    marginRight: 5, 
+    width: 90, 
   },
   infoValue: {
-    flex: 1, // 남은 공간을 모두 차지
+    flex: 1, 
     color: '#484848',
     fontSize: 14,
     lineHeight: 20,
@@ -361,14 +352,12 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 18, fontWeight: '500', color: '#000' },
   
-  // -----------------------------------------------------------------
-  // 6. (수정) 모달 관련 스타일 (ImageResultGroupScreen과 동일하게)
-  // -----------------------------------------------------------------
+
   centeredView: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.9)', // 어두운 배경
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', 
   },
   modalView: {
     width: '100%',
@@ -378,13 +367,13 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 60, // 상단 여백
-    right: 20, // 오른쪽 여백
-    zIndex: 10, // 이미지 위에 표시
+    top: 60, 
+    right: 20, 
+    zIndex: 10, 
   },
   fullScreenImage: {
     width: '100%',
-    height: '80%', // 화면의 80% 높이
+    height: '80%', 
   },
 });
 

@@ -39,7 +39,7 @@ type ScreenRouteProp = RouteProp<
   'SearchResultListScreen'
 >;
 
-// 검색 결과 '목록' (1D)을 표시하는 화면
+// 검색 결과 '목록'을 표시하는 화면
 export default function SearchResultListScreen() {
   // 네비게이션 및 라우트 훅
   const navigation = useNavigation<NavigationProp>();
@@ -47,9 +47,9 @@ export default function SearchResultListScreen() {
 
   // 상태 관리
   const [isLoading, setIsLoading] = useState(false); // 상세 정보 로딩
-  const [isListLoading, setListLoading] = useState(false); // 목록 로딩 (초기/추가)
+  const [isListLoading, setListLoading] = useState(false); // 목록 로딩
   
-  // `imageResults` (1D) 또는 `searchQuery` (객체)를 파라미터로 받음
+  // `imageResults`  또는 `searchQuery` 를 파라미터로 받음
   const { imageResults, searchQuery } = route.params;
 
   // 페이지네이션 상태
@@ -57,16 +57,16 @@ export default function SearchResultListScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [results, setResults] = useState<PillSearchSummary[]>([]);
 
-  // `searchQuery` (직접 검색)로 API를 호출하는 함수
+  // `searchQuery`로 API 호출
   const loadSearchResults = useCallback(async (query: SearchQuery, pageNum: number) => {
-    // (무한 루프 방지) 중복 로드 방지 로직은 handleLoadMore에 있음
+    // 무한 루프 방지
     
     setListLoading(true);
     try {
-      // 1. `page` 파라미터를 포함하여 `postSearch` API 호출
+      // `page` 파라미터를 포함하여 `postSearch` API 호출
       const response = await postSearch(query, pageNum); 
       
-      // 2. `pill_results`와 `total_pages`를 상태에 저장
+      // `pill_results`와 `total_pages`를 상태에 저장
       setResults(prev => 
         pageNum === 1 ? response.pill_results : [...prev, ...response.pill_results]
       );
@@ -78,19 +78,16 @@ export default function SearchResultListScreen() {
     } finally {
       setListLoading(false);
     }
-  // -----------------------------------------------------------------
-  // (수정) `totalPages`는 이 함수 내부에서 읽지(read) 않으므로
-  //        의존성 배열에서 제거 (ESLint 경고 해결)
-  // -----------------------------------------------------------------
+  
   }, []); 
 
   // 화면이 처음 로드될 때 실행
   useEffect(() => {
     if (searchQuery) {
-      // 1. '직접 검색' (searchQuery)으로 진입한 경우: page 1로 API 호출
+      // '직접 검색' (searchQuery)으로 진입한 경우: page 1로 API 호출
       loadSearchResults(searchQuery, 1);
     } else if (imageResults) {
-      // 2. '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
+      // '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
       setResults(imageResults);
       setTotalPages(1); // 이미지 검색은 페이지네이션이 없음
     }
@@ -100,9 +97,9 @@ export default function SearchResultListScreen() {
   const handlePillSelect = async (pill: PillSearchSummary) => {
     setIsLoading(true);
     try {
-      // 1. pill.id (code)로 상세 정보 API 호출
+      // pill.id (code)로 상세 정보 API 호출
       const detailResult = await getDetail(pill.id);
-      // 2. ResultScreen으로 이동 (상세 정보 전달)
+      // ResultScreen으로 이동 (상세 정보 전달)
       navigation.navigate('ResultScreen', { result: detailResult });
     } catch (error: any) {
       Alert.alert('오류', error.message || '상세 정보를 불러오는데 실패했습니다.');
@@ -113,12 +110,11 @@ export default function SearchResultListScreen() {
   
   // FlatList의 끝에 도달하면 이 함수가 호출됨
   const handleLoadMore = () => {
-    // (무한 루프 방지)
     // - '직접 검색'일 때만
     // - (page=1)이 (totalPages=60)보다 작고
     // - (isListLoading=false) 현재 로딩 중이 아닐 때만!
     if (searchQuery && page < totalPages && !isListLoading) {
-      // 'page + 1' (즉, 1+1 = 2)로 다음 페이지 API 호출
+      // 'page + 1'로 다음 페이지 API 호출
       loadSearchResults(searchQuery, page + 1);
     }
   };

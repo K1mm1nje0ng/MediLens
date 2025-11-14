@@ -1,20 +1,20 @@
-// axios 클라이언트 (POST용) 및 BASE_URL 임포트
+// axios 클라이언트 및 BASE_URL 임포트
 import client, { BASE_URL } from './client';
 // 타입 임포트
 import { PillResultData, PillSearchSummary } from '../types/navigation';
 // react-native-image-picker의 Asset 타입
 import { Asset } from 'react-native-image-picker';
 
-// --- (추가) fetch를 위한 공통 에러 핸들러 ---
+// fetch 에러 핸들러
 const handleApiResponse = async (response: Response) => {
   if (!response.ok) {
     let errorMessage = `서버 오류: ${response.status}`;
     try {
-      // 400 Bad Request처럼, 서버가 JSON 에러 메시지를 보냈을 경우
+      // 서버가 JSON 에러 메시지를 보냈을 경우
       const errorData = await response.json();
       errorMessage = errorData.error || errorMessage;
     } catch {
-      // JSON 파싱 실패 (에러 메시지는 이미 errorMessage에 있음)
+      // JSON 파싱 실패
     }
     // DirectSearchScreen의 catch 블록으로 에러를 던짐
     throw new Error(errorMessage);
@@ -22,9 +22,7 @@ const handleApiResponse = async (response: Response) => {
   return response.json(); // 성공 시 JSON 파싱
 };
 
-// -----------------------------------------------------------------
-// 1. 실제 API: 이미지 분석 요청 (POST /predict) - (axios 사용)
-// -----------------------------------------------------------------
+// 이미지 분석 요청 (POST /predict) - (axios 사용)
 export const postPredict = async (
   imageFile: Asset,
 ): Promise<{ task_id: string }> => {
@@ -40,9 +38,7 @@ export const postPredict = async (
   return response.data;
 };
 
-// -----------------------------------------------------------------
-// 2. 실제 API: 작업 상태 조회 (GET /status/:taskId) - (fetch 사용)
-// -----------------------------------------------------------------
+// 작업 상태 조회 (GET /status/:taskId) - (fetch 사용)
 export const getStatus = async (
   taskId: string,
 ): Promise<{ task_id: string; status: string }> => {
@@ -51,18 +47,15 @@ export const getStatus = async (
   return handleApiResponse(response);
 };
 
-// -----------------------------------------------------------------
-// 3. (수정) 실제 API: 작업 결과 조회 (GET /result/:taskId) - (fetch 사용)
-// (반환 타입: 2D 배열 -> { processedImage, resultGroups })
-// -----------------------------------------------------------------
+// 작업 결과 조회 (GET /result/:taskId) - (fetch 사용)
 export const getResult = async (
   taskId: string,
 ): Promise<{ processedImage: string; resultGroups: PillSearchSummary[][] }> => {
   const url = `${BASE_URL}/result/${taskId}`;
   const response = await fetch(url);
-  const data = await handleApiResponse(response); // { processed_image: "...", pill_results: [ [...] ] }
+  const data = await handleApiResponse(response);
 
-  // 1. 2D 배열 매핑
+  // 2D 배열 매핑
   const resultGroups = data.pill_results.map((group: any[]) =>
     group.map((item: any) => ({
       id: item.code,
@@ -71,23 +64,20 @@ export const getResult = async (
     })),
   );
   
-  // 2. (수정) base64 이미지와 2D 배열을 객체로 묶어 반환
+  // base64 이미지와 2D 배열을 객체로 묶어 반환
   return {
     processedImage: data.processed_image,
     resultGroups: resultGroups,
   };
 };
 
-// -----------------------------------------------------------------
-// 4. 실제 API: 정보 기반 검색 (GET /search) - (fetch 사용 + 페이지네이션)
-// (반환 타입: 요약 배열이 아닌, 페이지 정보 객체)
-// -----------------------------------------------------------------
+// 실제 API: 정보 기반 검색 (GET /search) - (fetch 사용 + 페이지네이션)
 export const postSearch = async (
   searchParams: any,
-  page: number = 1, // 1. page 파라미터 추가 (기본값 1)
+  page: number = 1, // page 파라미터 추가
 ): Promise<{ pill_results: PillSearchSummary[]; total_pages: number }> => {
   
-  // 2. page 파라미터를 searchParams에 추가
+  // page 파라미터를 searchParams에 추가
   const paramsWithPage = {
     ...searchParams,
     page: page,
@@ -102,25 +92,24 @@ export const postSearch = async (
   console.log('Fetch API로 요청할 URL (검색):', url);
 
   const response = await fetch(url);
-  const data = await handleApiResponse(response); // { pill_results: [...], total_pages: ... }
+  const data = await handleApiResponse(response);
 
-  // 3. pill_results 배열 매핑 (이미지 프록시 적용)
+  // pill_results 배열 매핑
   const mappedResults = data.pill_results.map((item: any) => ({
     id: item.code,
     pillName: item.pill_info,
     imageUrl: `${BASE_URL}/image-proxy?url=${encodeURIComponent(item.image)}`,
   }));
 
-  // 4. API 응답 구조 그대로 반환 (페이지 정보 포함)
+  // API 응답 구조 그대로 반환
   return {
     pill_results: mappedResults,
     total_pages: data.total_pages || 1,
   };
 };
 
-// -----------------------------------------------------------------
-// 5. 실제 API: 알약 상세 정보 조회 (GET /detail) - (fetch 사용)
-// -----------------------------------------------------------------
+
+// 알약 상세 정보 조회 (GET /detail) - (fetch 사용)
 export const getDetail = async (
   pillId: string | number,
 ): Promise<PillResultData> => {
@@ -131,7 +120,7 @@ export const getDetail = async (
   const response = await fetch(url);
   const data = await handleApiResponse(response);
 
-  // 한글 키(API)를 영어 키(App)로 매핑 (최종 필드 기준)
+  // 한글 키(API)를 영어 키(App)로 매핑
   return {
     id: pillId.toString(),
     pillName: data['제품명'],
@@ -155,13 +144,11 @@ export const getDetail = async (
   };
 };
 
-// -----------------------------------------------------------------
-// 6. 실제 API: 최근 검색 기록 (GET /recent) - (fetch 사용)
-// -----------------------------------------------------------------
+// 최근 검색 기록 (GET /recent) - (fetch 사용)
 export const getRecent = async (): Promise<PillSearchSummary[]> => {
   const url = `${BASE_URL}/recent`;
   const response = await fetch(url);
-  const data = await handleApiResponse(response); // { pill_results: [...] }
+  const data = await handleApiResponse(response); 
   
   const pillResults = data.pill_results;
 

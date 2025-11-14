@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  // Alert (API 호출은 SearchResultListScreen이 하므로 제거)
+  // Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // 네비게이션 훅 임포트
@@ -16,16 +16,12 @@ import { RootStackParamList, SearchQuery } from '../types/navigation'; // Search
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 
-// 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
+// 검색 필터 옵션 정의
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
-const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체']; // API 명세의 'form'
-
-// -----------------------------------------------------------------
-// (수정) colorOptions: '살구색' 추가
-// -----------------------------------------------------------------
+const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체'];
 const colorOptions = [
   '빨강', '검정', '하양', '회색', '주황', '노랑', '초록',
-  '파랑', '남색', '보라', '분홍', '갈색', '살구색', '전체'
+  '파랑', '남색', '보라', '분홍', '갈색', '살구', '전체'
 ];
 
 // 이 스크린에서 사용할 네비게이션 prop 타입
@@ -41,11 +37,11 @@ export default function DirectSearchScreen() {
 
   // 검색 조건 상태 (모양, 제형, 색상, 텍스트 입력)
   const [shape, setShape] = useState('전체');
-  const [type, setType] = useState('전체'); // 'form'
+  const [type, setType] = useState('전체'); 
   const [color, setColor] = useState('전체');
-  const [identifier, setIdentifier] = useState(''); // 'imprint' (API는 각인_1, 각인_2)
-  const [product, setProduct] = useState(''); // 'name'
-  const [company, setCompany] = useState(''); // 'company'
+  const [identifier, setIdentifier] = useState(''); 
+  const [product, setProduct] = useState(''); 
+  const [company, setCompany] = useState(''); 
 
   // 옵션 버튼 그룹(모양, 제형, 색상) 렌더링 함수
   const renderOptionGroup = (
@@ -76,24 +72,20 @@ export default function DirectSearchScreen() {
     </View>
   );
 
-  // '검색하기' 버튼 핸들러 (페이지네이션 적용)
+  // '검색하기' 버튼 핸들러 
   const handleSearch = () => {
-    // (제거) "모양/색상 필수" 유효성 검사 (API가 '전체 검색'을 지원)
 
-    // 2. API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
+    // API 전송용 검색 파라미터 객체 생성 
     const searchQuery: SearchQuery = { // 타입을 SearchQuery로 명시
       shape: shape === '전체' ? undefined : shape,
       color: color === '전체' ? undefined : color,
       form: type === '전체' ? undefined : type,
-      // (참고) API 명세가 '각인_1', '각인_2'를 받지만,
-      // 'imprint' 파라미터가 어떻게 처리되는지 백엔드 확인 필요
       imprint: identifier || undefined, 
       name: product || undefined,
       company: company || undefined,
     };
 
-    // 3. 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
-    //    API 호출은 SearchResultListScreen이 담당
+    // 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
     navigation.navigate('SearchResultListScreen', {
       searchQuery: searchQuery, // imageResults 대신 searchQuery 전달
     });

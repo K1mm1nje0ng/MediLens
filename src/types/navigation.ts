@@ -1,6 +1,4 @@
-// API 응답 타입 (상세 정보) - 최종 명세서 기준
 export interface PillResultData {
-  // --- API 명세서에 있는 필드 ---
   id: string;
   pillName: string; // 제품명
   company: string; // 업체명
@@ -11,8 +9,6 @@ export interface PillResultData {
   sideEffects: string; // 부작용
   storage: string; // 보관법
   imageUrl: string; // 이미지
-
-  // --- API 명세서에 추가된 필드 ---
   imprint1: string; // 각인_1
   imprint2: string; // 각인_2
   sizeLong: string; // 장축
@@ -41,25 +37,22 @@ export type SearchQuery = {
   company?: string;
 };
 
-// 앱 내 화면(Screen) 목록과 각 화면이 받을 파라미터(params) 정의
+// 앱 내 화면 목록과 각 화면이 받을 파라미터 정의
 export type RootStackParamList = {
-  PillSearchScreen: undefined; // 메인 화면
-  DirectSearchScreen: undefined; // 직접 검색 옵션 화면
+  PillSearchScreen: undefined; 
+  DirectSearchScreen: undefined;
   
-  // (수정) 이미지 분석 결과 (2D 배열)를 받는 화면
+  // 이미지 분석 결과 화면
   ImageResultGroupScreen: {
-    imageResults: PillSearchSummary[][]; // 2D 배열
-    // -----------------------------------------------------------------
-    // (추가) 명세서의 'processed_image' (base64 문자열)
-    // -----------------------------------------------------------------
+    imageResults: PillSearchSummary[][]; 
     processedImage: string; 
   };
 
-  // (수정) SearchResultListScreen이 받을 파라미터 변경
+  // 검색 결과 목록 화면
   SearchResultListScreen: {
-    // 1. (이미지 분석) 1D 배열을 받거나
+    // 이미지 분석 배열을 받거나
     imageResults?: PillSearchSummary[]; 
-    // 2. (직접 검색) 검색 쿼리 객체를 받음
+    // 검색 쿼리 객체를 받음
     searchQuery?: SearchQuery;
   };
   

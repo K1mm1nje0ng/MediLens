@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  Modal, // Modal 임포트 추가
-  Dimensions // 화면 크기를 얻기 위해 Dimensions 임포트 추가
+  Modal, 
+  Dimensions 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -37,9 +37,8 @@ export default function ImageResultGroupScreen() {
 
   const { imageResults, processedImage } = route.params;
 
-  // -----------------------------------------------------------------
-  // (추가) 이미지 확대 모달 상태 관리
-  // -----------------------------------------------------------------
+  
+  // 이미지 확대 모달 상태 관리
   const [isImageModalVisible, setImageModalVisible] = useState(false);
 
   const handleGroupSelect = (group: PillSearchSummary[]) => {
@@ -66,14 +65,12 @@ export default function ImageResultGroupScreen() {
       {/* 결과 그룹 목록을 보여주는 스크롤 뷰 */}
       <ScrollView contentContainerStyle={styles.scroll}>
         
-        {/* ----------------------------------------------------------------- */}
-        {/* (수정) processed_image 섹션: 텍스트 제거 및 TouchableOpacity로 감싸기 */}
-        {/* ----------------------------------------------------------------- */}
+        
+        {/* processed_image 섹션: 텍스트 제거 및 TouchableOpacity로 감싸기 */}
         <TouchableOpacity
           style={styles.processedImageBox}
           onPress={() => setImageModalVisible(true)} // 이미지 탭 시 모달 열기
         >
-          {/* <Text style={styles.processedImageLabel}>AI가 감지한 알약</Text> <- 이 줄 제거 */}
           <Image
             source={{ uri: `data:image/jpeg;base64,${processedImage}` }}
             style={styles.processedImage}
@@ -111,13 +108,12 @@ export default function ImageResultGroupScreen() {
         })}
       </ScrollView>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* (추가) 이미지 확대 모달 */}
-      {/* ----------------------------------------------------------------- */}
+      
+      {/* 이미지 확대 모달 */}
       <Modal
         visible={isImageModalVisible}
         transparent={true}
-        onRequestClose={() => setImageModalVisible(false)} // Android 뒤로가기 버튼 처리
+        onRequestClose={() => setImageModalVisible(false)}
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
@@ -154,14 +150,13 @@ const styles = StyleSheet.create({
   
   processedImageBox: {
     width: '100%',
-    // backgroundColor: '#000', // (수정) 검정색 배경 제거
-    backgroundColor: '#F4F4F4', // (수정) 연한 회색 배경으로 변경
+    backgroundColor: '#F4F4F4', 
     borderRadius: 12,
     marginBottom: 20,
     padding: 10,
     alignItems: 'center',
-    borderWidth: 1, // (추가) 경계선 추가
-    borderColor: '#EEEEEE', // (추가) 경계선 색상
+    borderWidth: 1, 
+    borderColor: '#EEEEEE', 
   },
   
   processedImage: {
@@ -209,21 +204,18 @@ const styles = StyleSheet.create({
     color: '#555',
   },
 
-  // -----------------------------------------------------------------
-  // (추가) 이미지 확대 모달 스타일
-  // -----------------------------------------------------------------
   centeredView: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.9)', // 어두운 배경
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', 
   },
   modalView: {
-    width: width, // 화면 전체 너비
-    height: height, // 화면 전체 높이
+    width: width, 
+    height: height, 
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent', // 모달 뷰 자체는 투명하게
+    backgroundColor: 'transparent', 
   },
   fullScreenImage: {
     width: '100%',
@@ -231,9 +223,9 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50, // SafeAreaView를 고려하여 상단 여백 조절
+    top: 50, 
     right: 20,
-    zIndex: 1, // 이미지 위에 버튼이 보이도록
+    zIndex: 1, 
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 5,

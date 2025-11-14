@@ -37,7 +37,7 @@ import {
 interface ImageAsset {
   uri?: string;
   fileName?: string;
-  type?: string; // postPredict를 위해 type 추가
+  type?: string;
 }
 
 // 이 스크린에서 사용할 네비게이션 prop 타입
@@ -54,19 +54,17 @@ export default function PillSearchScreen() {
   // 로딩 오버레이, 메시지, 최근 검색 기록 상태 관리
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
-  // (수정) 최근 기록 타입은 1D 배열 (PillSearchSummary[])
   const [history, setHistory] = useState<PillSearchSummary[]>([]);
 
   // 커스텀 훅 사용
   const { openCamera } = useCamera();
   const { openGallery } = useGallery();
 
-  // (수정) GET /recent API로 최근 검색 기록(1D)을 로드
+  // GET /recent API로 최근 검색 기록 로드
   const loadHistory = async () => {
     try {
-      // (수정) AsyncStorage -> getRecent()
       const historyData = await getRecent();
-      // (수정) 2개만 보여줌
+      // 2개만 보여줌
       setHistory(historyData.slice(0, 2));
     } catch (error: any) {
       console.error('getRecent API 오류:', error.message);
@@ -74,7 +72,7 @@ export default function PillSearchScreen() {
     }
   };
 
-  // 화면이 포커스될 때마다(돌아올 때마다) loadHistory 함수 호출
+  // 화면이 포커스될 때마다 loadHistory 함수 호출
   useFocusEffect(
     useCallback(() => {
       loadHistory();
@@ -83,7 +81,7 @@ export default function PillSearchScreen() {
 
   // '이미지 분석' API 호출 (2D 배열 처리)
   const handleImageAnalysis = async (image: ImageAsset) => {
-    // 1. uri 검사
+    // uri 검사
     if (!image.uri) {
       Alert.alert('오류', '이미지 URI를 찾을 수 없습니다.');
       return;
@@ -92,27 +90,25 @@ export default function PillSearchScreen() {
     try {
       setIsLoading(true);
       setMessage('이미지 분석을 요청합니다...');
-      const { task_id } = await postPredict(image); // 1. 분석 요청
+      const { task_id } = await postPredict(image); // 분석 요청
 
-      // 2초마다 상태를 체크하는 폴링(Polling) 구현
+      // 2초마다 상태를 체크하는 폴링 구현
       let status = 'PENDING';
       let attempts = 0;
-      while (status === 'PENDING' && attempts < 90) { // 30번(60초) 시도
+      while (status === 'PENDING' && attempts < 90) { 
         attempts++;
-        setMessage(`분석 상태 확인 중...`); // 카운터 텍스트 제거
-        const statusResponse = await getStatus(task_id); // 2. 상태 확인
+        setMessage(`분석 상태 확인 중...`); 
+        const statusResponse = await getStatus(task_id); // 상태 확인
         status = statusResponse.status;
 
         if (status === 'SUCCESS') break; // 성공 시 루프 탈출
         await new Promise<void>((resolve) => setTimeout(resolve, 2000)); // 2초 대기
       }
 
-      // 3. 최종 상태 확인
+      // 최종 상태 확인
       if (status === 'SUCCESS') {
         setMessage('결과를 가져오는 중입니다...');
-        // -----------------------------------------------------------------
-        // 4. (수정) getResult는 { processedImage, resultGroups } 객체를 반환
-        // -----------------------------------------------------------------
+        // getResult는 { processedImage, resultGroups } 객체 반환
         const { processedImage, resultGroups } = await getResult(task_id);
 
         if (!resultGroups || resultGroups.length === 0) {
@@ -121,9 +117,7 @@ export default function PillSearchScreen() {
             '이미지와 일치하는 알약을 찾을 수 없습니다.',
           );
         } else {
-          // -----------------------------------------------------------------
-          // 5. (수정) 'ImageResultGroupScreen'으로 2D 배열과 base64 이미지 전달
-          // -----------------------------------------------------------------
+          // 'ImageResultGroupScreen'으로 2D 배열과 base64 이미지 전달
           navigation.navigate('ImageResultGroupScreen', {
             imageResults: resultGroups,
             processedImage: processedImage,
@@ -167,14 +161,14 @@ export default function PillSearchScreen() {
     }
   };
 
-  // (수정) '최근 검색 기록' 탭 핸들러 (getDetail 호출)
+  // '최근 검색 기록' 탭 핸들러
   const handleRecentSearch = async (pill: PillSearchSummary) => {
     setIsLoading(true);
     setMessage('상세 정보를 불러오는 중...');
     try {
-      // 1. pill.id (code)로 상세 정보 API 호출
+      // pill.id (code)로 상세 정보 API 호출
       const detailResult = await getDetail(pill.id);
-      // 2. ResultScreen으로 이동
+      // ResultScreen으로 이동
       navigation.navigate('ResultScreen', { result: detailResult });
     } catch (error: any) {
       console.error('getDetail API 오류:', error.message);
@@ -202,7 +196,7 @@ export default function PillSearchScreen() {
       <View style={styles.searchCard}>
         <Text style={styles.header}>무슨 약을 찾으시나요?</Text>
 
-        {/* 1. 카메라로 알약 검색 */}
+        {/* 카메라로 알약 검색 */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#409F82' }]}
           onPress={handleTakePhoto}
@@ -213,7 +207,7 @@ export default function PillSearchScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* 2. 사진으로 알약 검색 */}
+        {/* 사진으로 알약 검색 */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#A8D4C5' }]}
           onPress={handleSelectPhoto}
@@ -222,7 +216,7 @@ export default function PillSearchScreen() {
           <Text style={styles.optionText}>사진으로 알약 검색</Text>
         </TouchableOpacity>
 
-        {/* 3. 직접 알약 검색 */}
+        {/* 직접 알약 검색 */}
         <TouchableOpacity
           style={[styles.optionBox, { backgroundColor: '#fff' }]}
           onPress={() => navigation.navigate('DirectSearchScreen')}
@@ -287,48 +281,48 @@ export default function PillSearchScreen() {
 // 화면 스타일 정의
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FFFC' },
-  // 스크롤 뷰 내부 컨텐츠 스타일 (상단 여백 40)
+  // 스크롤 뷰 내부 컨텐츠
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 40, // 상단 여백
+    paddingTop: 40, 
     alignItems: 'stretch',
     paddingBottom: 50,
   },
-  // '프로그램 이름' 타이틀 영역 (세로 여백 50)
+  // '프로그램 이름' 
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 50, // 세로 여백
+    marginVertical: 50, 
   },
   title: { fontSize: 36, fontWeight: '600', color: '#000' },
-  // 검색 옵션 카드 (간격 축소)
+  // 검색 옵션 카드 
   searchCard: {
     backgroundColor: '#f8f8f8',
     borderRadius: 16,
-    padding: 15, // 내부 여백
-    marginBottom: 20, // 하단 여백
+    padding: 15, 
+    marginBottom: 20, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  // '무슨 약을 찾으시나요?' 헤더 (간격 축소)
+  // '무슨 약을 찾으시나요?' 헤더 
   header: {
     fontSize: 27,
     fontWeight: '500',
     textAlign: 'center',
-    marginVertical: 20, // 세로 여백
+    marginVertical: 20, 
   },
-  // 카메라/사진/검색 버튼 (요청하신 값으로 수정)
+  // 카메라/사진/검색 버튼 
   optionBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    paddingVertical: 25, // 버튼 높이
-    marginVertical: 13, // 버튼 간 격
+    paddingVertical: 25, 
+    marginVertical: 13, 
   },
   optionText: {
     fontSize: 20,
@@ -356,7 +350,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB', // 이미지 로딩 중 배경
+    backgroundColor: '#E5E7EB', 
     marginRight: 16,
   },
   // 최근 검색 텍스트
@@ -364,7 +358,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#1C1B14',
-    flexShrink: 1, // 텍스트가 길어질 때 줄어들도록 설정
+    flexShrink: 1, 
   },
   // '기록 없음' 텍스트
   recentEmpty: {

@@ -15,7 +15,7 @@ from color_analysis import analyze_pill_colors
 from shape_analysis import classify_shape_with_ai
 from database_handler import load_database, find_best_match
 from imprint_analysis import get_imprint as get_imprint_tesseract
-from imprint_analysis_google import analyze_imprint_google  # ◀◀◀ Google/Tesseract만 남김
+from imprint_analysis_google import analyze_imprint_google
 
 
 # 한글 텍스트를 이미지에 그리는 함수

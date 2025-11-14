@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
+import re
 from fuzzywuzzy import fuzz
 
 # 색상명과 RGB 값 매핑 (수정/추가 가능)
 COLOR_RGB_MAP = {
-    '하양': [255, 255, 255], '검정': [0, 0, 0], '회색': [149, 165, 166],
-    '빨강': [231, 76, 60], '주황': [230, 126, 34], '노랑': [241, 196, 15],
-    '초록': [39, 174, 96], '파랑': [52, 152, 219], '남색': [0, 0, 128],
-    '보라': [142, 68, 173], '분홍': [231, 127, 153], '갈색': [160, 82, 45]
+    '하양': [255, 255, 255], '검정': [0, 0, 0],       '회색': [149, 165, 166],
+    '빨강': [231, 76, 60],   '주황': [230, 126, 34],  '노랑': [241, 196, 15],
+    '초록': [39, 174, 96],   '파랑': [52, 152, 219],  '남색': [0, 0, 128],
+    '보라': [142, 68, 173],  '분홍': [231, 127, 153], '갈색': [160, 82, 45], '살구': [220, 180, 150]
 }
 
 # RGB 색 공간에서 이론상 가장 먼 거리
@@ -74,15 +75,26 @@ def load_database(db_path):
         return None
 
 
+def normalize_imprint(text):
+    """
+    알파벳(A-Z)과 숫자(0-9)를 제외한 모든 문자(특수기호, 공백 등)를 제거합니다.
+    """
+    # 1. str 타입으로 변환하고, 대문자화, 양끝 공백/nan 제거
+    text_cleaned = str(text).upper().replace('NAN', '').strip()
+
+    # 2. A-Z, 0-9를 제외한 모든 문자를 빈 문자열("")로 치환
+    return re.sub(r"[^A-Z0-9가-힣]", "", text_cleaned)
+
+
 def calculate_score(row, shape_probabilities, colors, imprint):
     """
     데이터베이스의 약 정보와 분석된 정보를 비교하여 유사도 점수를 계산
     (점수가 높을수록 더 유사함)
     """
     score = 0
-    MAX_SHAPE_SCORE = 30
-    MAX_COLOR_SCORE = 30
-    MAX_IMPRINT_SCORE = 40
+    MAX_SHAPE_SCORE = 25
+    MAX_COLOR_SCORE = 25
+    MAX_IMPRINT_SCORE = 50
 
     # 1. 모양 점수: AI의 예측 확률에 따라 가중치 부여
     shape_score = 0
@@ -97,43 +109,41 @@ def calculate_score(row, shape_probabilities, colors, imprint):
     color_similarity = calculate_color_similarity_score(colors, row['color'])
     score += color_similarity * MAX_COLOR_SCORE
 
-    # --- 각인 점수 계산 로직 수정 ---
-    imprint_recognized = imprint.upper().strip()
+    # --- 각인 점수 계산 로직 수정 (정규화 적용) ---
+    # 1. AI가 인식한 각인을 정규화
+    imprint_recognized = normalize_imprint(imprint)
     imprint_score = 0
 
-    # DB 각인 정보 정리 ('nan' 제거)
-    imprint1_db = str(row.get('text', '')).upper().replace('NAN', '').strip()
-    imprint2_db = str(row.get('text2', '')).upper().replace('NAN', '').strip()
-    db_imprint_full = (imprint1_db + " " + imprint2_db).strip()
+    # 2. DB의 각인 정보를 정규화
+    imprint1_db = normalize_imprint(row.get('text', ''))
+    imprint2_db = normalize_imprint(row.get('text2', ''))
+    db_imprint_full = (imprint1_db + imprint2_db).strip()
 
     if imprint_recognized:
         # 3-1. 탐지된 각인이 있는 경우
         if db_imprint_full:
             # DB에도 각인이 있으면 유사도 계산
+            similarity1 = fuzz.ratio(imprint_recognized, imprint1_db) if imprint1_db else 0
+            similarity2 = fuzz.ratio(imprint_recognized, imprint2_db) if imprint2_db else 0
+            similarity_full = fuzz.ratio(imprint_recognized, db_imprint_full)
 
-            # 앞면, 뒷면 각각의 부분 일치 점수 계산
-            similarity1 = fuzz.partial_ratio(imprint_recognized, imprint1_db) if imprint1_db else 0
-            similarity2 = fuzz.partial_ratio(imprint_recognized, imprint2_db) if imprint2_db else 0
-
-            # DB 앞면+뒷면 합친 것과도 비교
-            similarity_full = fuzz.partial_ratio(imprint_recognized, db_imprint_full)
-
-
-            # 가장 높은 유사도 점수를 채택
             max_similarity = max(similarity1, similarity2, similarity_full)
+            imprint_score = (max_similarity / 100.0) * MAX_IMPRINT_SCORE  # MAX 45점
 
-            # 0~100점 스케일의 유사도를 0~MAX_IMPRINT_SCORE (40점) 스케일로 변환
-            imprint_score = (max_similarity / 100.0) * MAX_IMPRINT_SCORE
+            # --- 각인 일치도 보너스 ---
+            # 정규화 후 95% 이상 일치하면 보너스
+            if max_similarity > 95:
+                imprint_score += 20  # 20점 추가
+
         else:
-            # 탐지 각인은 있으나 DB 각인이 없으면 0점
+            # (탐지 각인은 있으나 DB 각인이 없으면 0점)
             imprint_score = 0
 
     elif not db_imprint_full:
         # 3-2. 탐지된 각인도 없고, DB 각인도 없으면 10점 보너스
-        # (각인이 없는 알약끼리 일치)
         imprint_score = 10
 
-        # 3-3. (탐지 각인은 없으나 DB 각인이 있는 경우 -> 0점)
+    # (3-3. 탐지 각인은 없으나 DB 각인이 있으면 0점 -> 기본값)
 
     score += imprint_score
     return score
@@ -168,7 +178,7 @@ def find_best_match(pill_db, identified_shape_info, identified_colors, identifie
         # shape_probabilities의 키(모양 이름)를 기준으로 후보군 필터링
         shape_match = row['shape'] in shape_probabilities
 
-        # (수정) identified_colors가 비어있을 수 있으므로 split() 전 확인
+        # identified_colors가 비어있을 수 있으므로 split() 전 확인
         color_list = identified_colors.split() if identified_colors else []
         color_match = any(color in row['color'] for color in color_list)
 

@@ -13,6 +13,8 @@ COLOR_RGB_MAP = {
 
 # RGB 색 공간에서 이론상 가장 먼 거리
 MAX_COLOR_DIST = np.sqrt(255 ** 2 * 3)
+# 색상 유사도 0점을 받을 기준 거리 (이 값보다 멀어지면 0점)
+EFFECTIVE_COLOR_DIST = 120.0
 
 
 def get_color_distance(color_name1, color_name2):
@@ -48,7 +50,7 @@ def calculate_color_similarity_score(identified_colors_str, db_colors_str):
                 similarity = 1.0
             else:
                 distance = get_color_distance(id_color, db_color)
-                similarity = max(0, 1 - (distance / MAX_COLOR_DIST))
+                similarity = max(0, 1 - (distance / EFFECTIVE_COLOR_DIST))
 
             if similarity > max_similarity_for_color:
                 max_similarity_for_color = similarity

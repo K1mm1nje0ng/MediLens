@@ -6,23 +6,26 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  // 1. (제거) 'Alert'는 이 화면에서 더 이상 사용하지 않음
+  // Alert (API 호출은 SearchResultListScreen이 하므로 제거)
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // 네비게이션 훅 임포트
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { RootStackParamList, SearchQuery } from '../types/navigation'; // SearchQuery 임포트
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
-// 2. (제거) 'postSearch'와 'LoadingOverlay', 'axios'는 이 화면에서 더 이상 사용하지 않음
 
 // 검색 필터 옵션 정의 (실제 API 파라미터 값 기준)
 const shapeOptions = ['원형', '타원형', '장방형', '전체'];
 const typeOptions = ['정제', '경질캡슐', '연질캡슐', '전체']; // API 명세의 'form'
+
+// -----------------------------------------------------------------
+// (수정) colorOptions: '살구색' 추가
+// -----------------------------------------------------------------
 const colorOptions = [
   '빨강', '검정', '하양', '회색', '주황', '노랑', '초록',
-  '파랑', '남색', '보라', '분홍', '갈색', '전체'
+  '파랑', '남색', '보라', '분홍', '갈색', '살구색', '전체'
 ];
 
 // 이 스크린에서 사용할 네비게이션 prop 타입
@@ -43,8 +46,6 @@ export default function DirectSearchScreen() {
   const [identifier, setIdentifier] = useState(''); // 'imprint' (API는 각인_1, 각인_2)
   const [product, setProduct] = useState(''); // 'name'
   const [company, setCompany] = useState(''); // 'company'
-
-  // 3. (제거) 'isLoading' 상태는 이 화면에서 더 이상 필요하지 않음
 
   // 옵션 버튼 그룹(모양, 제형, 색상) 렌더링 함수
   const renderOptionGroup = (
@@ -80,19 +81,18 @@ export default function DirectSearchScreen() {
     // (제거) "모양/색상 필수" 유효성 검사 (API가 '전체 검색'을 지원)
 
     // 2. API 전송용 검색 파라미터 객체 생성 (실제 API 키 이름 사용)
-    const searchQuery = {
+    const searchQuery: SearchQuery = { // 타입을 SearchQuery로 명시
       shape: shape === '전체' ? undefined : shape,
       color: color === '전체' ? undefined : color,
       form: type === '전체' ? undefined : type,
       // (참고) API 명세가 '각인_1', '각인_2'를 받지만,
       // 'imprint' 파라미터가 어떻게 처리되는지 백엔드 확인 필요
-      // 여기서는 'imprint'로 전송 (pillApi.ts에서 '각인_1'로 바꿀 수도 있음)
       imprint: identifier || undefined, 
       name: product || undefined,
       company: company || undefined,
     };
 
-    // 3. (수정) 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
+    // 3. 'searchQuery' 객체를 'SearchResultListScreen'으로 전달
     //    API 호출은 SearchResultListScreen이 담당
     navigation.navigate('SearchResultListScreen', {
       searchQuery: searchQuery, // imageResults 대신 searchQuery 전달
@@ -153,15 +153,12 @@ export default function DirectSearchScreen() {
           <TouchableOpacity
             style={styles.searchButton}
             onPress={handleSearch}
-            // 4. (제거) disabled={isLoading} 제거
           >
             <Feather name="search" size={18} color="#fff" />
             <Text style={styles.searchButtonText}>검색하기</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* 5. (제거) <LoadingOverlay /> 제거 */}
     </SafeAreaView>
   );
 }

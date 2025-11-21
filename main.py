@@ -45,12 +45,12 @@ if __name__ == "__main__":
     DEBUG_MODE = False
     # ---------------------------------------------------
 
-    IMAGE_PATH = "test_image/sample1.png"
+    IMAGE_PATH = "test_image/A11A0100A019501.jpg"
     YOLO_MODEL_PATH = 'weights/detection_model.pt'
     SHAPE_MODEL_PATH = "weights/shape_model.h5"
     OUTPUT_DIR = "output_images"
     DB_PATH = "database/pill.csv"
-    FONT_PATH = "fonts/malgun.ttf"
+    FONT_PATH = "fonts/NotoSansKR-Medium.ttf"
 
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -117,11 +117,42 @@ if __name__ == "__main__":
             approximated_contour = cv2.approxPolyDP(pill_contour, epsilon, True)
             smoothed_binarized_image = np.zeros_like(binarized_image)
             cv2.drawContours(smoothed_binarized_image, [approximated_contour], -1, (255), -1)
+            
+            contour_area = cv2.contourArea(pill_contour)
+            min_rect = cv2.minAreaRect(pill_contour) 
+            box_width, box_height = min_rect[1]
+            box_area = box_width * box_height
+            if box_area > 0:
+                fill_ratio = contour_area / box_area
+
 
         # AI로 모양 분석
         shape_result = "모델 로드 실패"
         if shape_model:
             shape_result = classify_shape_with_ai(smoothed_binarized_image, shape_model)
+        
+            if shape_result:
+                primary_prediction = shape_result[0][0]
+                if primary_prediction in ['타원형', '장방형'] and fill_ratio > 0:
+                    print(f"  --- AI: {primary_prediction}, Fill Ratio: {fill_ratio:.2f} ---")
+                    # [결정 규칙] 채움 비율 85%를 기준으로 최종 판정
+                    scores_dict = dict(shape_result)
+                    if fill_ratio < 0.9: # 85% 미만이면 타원형
+                        if primary_prediction != '타원형':
+                            temp = scores_dict['타원형']
+                            scores_dict['타원형'] = scores_dict['장방형']
+                            scores_dict['장방형'] = temp
+                    else: # 85% 이상이면 장방형
+                        if primary_prediction != '장방형':
+                            temp = scores_dict['장방형']
+                            scores_dict['장방형'] = scores_dict['타원형']
+                            scores_dict['타원형'] = temp
+                    shape_result_list = list(scores_dict.items())
+                    shape_result_list.sort(key=lambda x: x[1], reverse=True)
+                    formatted_list = [f"{name} ({conf:.2%})" for name, conf in shape_result_list]
+                    shape_result = ", ".join(formatted_list)
+        
+                    
         print(f"  - AI 모양 분석 결과: {shape_result}")
         all_shape_results.append(shape_result)  #  종합 모양 리스트에 추가
 
@@ -181,12 +212,12 @@ if __name__ == "__main__":
         # --- 최종 결과 이미지에 라벨 그리기 ---
         # 1등 후보의 정보로 모든 박스에 라벨을 붙임
         top_candidate = final_candidate_pills[0]
-        label = f"{top_candidate['pill_info']}"
+        label = "알약"
 
         for box in pill_boxes:
             x1, y1, _, _ = box
             # 폰트 크기(18)에 맞춰 대략적인 라벨 박스 계산
-            label_box_width = len(label) * 12 + 10
+            label_box_width = len(label) * 16 + 10
             cv2.rectangle(original_image, (x1, y1 - 25), (x1 + label_box_width, y1), (0, 255, 0), -1)
             original_image = draw_korean_text(original_image, label, (x1, y1 - 25), FONT_PATH, 18, (0, 0, 0))
 

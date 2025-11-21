@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // 타입 임포트
-import { RootStackParamList, PillResultData } from '../types/navigation';
+import { RootStackParamList, PillResultData, SearchQuery } from '../types/navigation'; // SearchQuery 타입 추가 필요 (없으면 any로 해도 되지만 권장)
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -32,6 +32,22 @@ export default function ResultScreen({ route, navigation }: Props) {
   const handleImageError = (error: any) => {
     console.error('이미지 로드 실패:', error.nativeEvent.error);
     setIsImageLoading(false);
+  };
+
+  // [추가됨] 수정하기 버튼 핸들러
+  const handleEdit = () => {
+    // 현재 결과 데이터를 검색 쿼리 포맷으로 변환
+    const query: SearchQuery = {
+      shape: result.shape,       // 모양
+      color: result.color1,      // 색상 (주색상)
+      form: result.form,         // 제형
+      imprint: result.imprint1,  // 식별문자 (앞면 기준)
+      name: result.pillName,     // 제품명
+      company: result.company,   // 회사명
+    };
+
+    // 파라미터를 담아서 이동
+    navigation.navigate('DirectSearchScreen', { initialQuery: query });
   };
 
   return (
@@ -141,10 +157,10 @@ export default function ResultScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* '수정하기' 버튼: 탭하면 `DirectSearchScreen`으로 이동 */}
+        {/* '수정하기' 버튼: [수정됨] handleEdit 함수 호출 */}
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('DirectSearchScreen')}
+          onPress={handleEdit}
         >
           <Feather
             name="edit-3"

@@ -39,8 +39,10 @@ export type SearchQuery = {
 
 // 앱 내 화면 목록과 각 화면이 받을 파라미터 정의
 export type RootStackParamList = {
-  PillSearchScreen: undefined; 
-  DirectSearchScreen: undefined;
+  PillSearchScreen: undefined;
+  
+  // [수정됨] 수정 기능을 위해 파라미터를 받을 수 있게 설정했습니다.
+  DirectSearchScreen: { initialQuery?: SearchQuery } | undefined;
   
   // 이미지 분석 결과 화면
   ImageResultGroupScreen: {

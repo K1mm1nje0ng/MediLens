@@ -1,5 +1,5 @@
-// axios 클라이언트 및 BASE_URL 임포트
-import client, { BASE_URL } from './client';
+// axios 인스턴스(client)는 이제 필요 없으므로 BASE_URL만 임포트합니다.
+import { BASE_URL } from './client'; 
 // 타입 임포트
 import { PillResultData, PillSearchSummary } from '../types/navigation';
 // react-native-image-picker의 Asset 타입
@@ -22,20 +22,32 @@ const handleApiResponse = async (response: Response) => {
   return response.json(); // 성공 시 JSON 파싱
 };
 
-// 이미지 분석 요청 (POST /predict) - (axios 사용)
+// 이미지 분석 요청 (POST /predict) - (fetch로 변경됨)
 export const postPredict = async (
   imageFile: Asset,
 ): Promise<{ task_id: string }> => {
+  const url = `${BASE_URL}/predict`;
+  
   const formData = new FormData();
+  
+  // React Native에서 FormData에 파일을 넣을 때는 객체 형태가 필요합니다.
+  // TypeScript 오류 방지를 위해 as any를 사용할 수도 있습니다.
   formData.append('file', {
     uri: imageFile.uri,
     type: imageFile.type || 'image/jpeg',
     name: imageFile.fileName || 'image.jpg',
+  } as any); 
+
+  console.log('Fetch API로 요청할 URL (이미지 분석):', url);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+    // 주의: fetch 사용 시 FormData 전송 헤더('Content-Type': 'multipart/form-data')는
+    // 절대로 직접 설정하면 안 됩니다. (Boundary가 누락되어 전송 실패함)
   });
-  const response = await client.post('/predict', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
+
+  return handleApiResponse(response);
 };
 
 // 작업 상태 조회 (GET /status/:taskId) - (fetch 사용)

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert, // Alert 추가
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // 네비게이션 훅 임포트
@@ -30,7 +30,7 @@ type NavigationProp = NativeStackNavigationProp<
   'DirectSearchScreen'
 >;
 
-// 이 스크린의 Route 타입 (파라미터 받기 위함)
+// 이 스크린의 Route 타입
 type DirectSearchScreenRouteProp = RouteProp<
   RootStackParamList, 
   'DirectSearchScreen'
@@ -40,13 +40,12 @@ type DirectSearchScreenRouteProp = RouteProp<
 export default function DirectSearchScreen() {
   // 네비게이션 훅
   const navigation = useNavigation<NavigationProp>();
-  // 라우트 훅 (파라미터 수신용)
+  // 라우트 훅
   const route = useRoute<DirectSearchScreenRouteProp>();
 
-  // 검색 조건 상태
-  const [shape, setShape] = useState('전체');
-  const [type, setType] = useState('전체'); 
-  // [변경] 색상은 다중 선택을 위해 배열로 관리 (기본값 ['전체'])
+  // 모든 검색 조건 상태를 배열(Array)로 관리하여 다중 선택 지원
+  const [selectedShapes, setSelectedShapes] = useState<string[]>(['전체']);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['전체']);
   const [selectedColors, setSelectedColors] = useState<string[]>(['전체']);
   
   const [identifier, setIdentifier] = useState(''); 
@@ -58,30 +57,28 @@ export default function DirectSearchScreen() {
     if (route.params?.initialQuery) {
       const q = route.params.initialQuery;
       
-      setShape(q.shape || '전체');
-      
-      // [변경] 색상 문자열(예: "빨강,하양")을 배열로 변환
+      // 1. 모양
+      if (q.shape && q.shape !== '전체') {
+        setSelectedShapes(q.shape.split(','));
+      } else {
+        setSelectedShapes(['전체']);
+      }
+
+      // 2. 색상
       if (q.color && q.color !== '전체') {
-        // 콤마로 구분되어 있을 수 있으므로 split
         setSelectedColors(q.color.split(','));
       } else {
         setSelectedColors(['전체']);
       }
       
-      // 제형(Form) 매핑 로직
-      let targetType = '전체';
-      const formVal = q.form || '';
-
-      if (typeOptions.includes(formVal)) {
-        targetType = formVal;
-      } else if (formVal.includes('정')) {
-        targetType = '정제';
-      } else if (formVal.includes('연질')) {
-        targetType = '연질캡슐';
-      } else if (formVal.includes('캡슐')) {
-        targetType = '경질캡슐';
+      // 3. 제형
+      if (q.form && q.form !== '전체') {
+        const rawForms = q.form.split(',');
+        const mappedForms = rawForms.map(f => mapFormToCategory(f));
+        setSelectedTypes(Array.from(new Set(mappedForms)));
+      } else {
+        setSelectedTypes(['전체']);
       }
-      setType(targetType);
 
       setIdentifier(q.imprint || '');
       setProduct(q.name || '');
@@ -89,91 +86,80 @@ export default function DirectSearchScreen() {
     }
   }, [route.params]);
 
-  // [추가] 색상 토글 핸들러 (최대 2개 선택)
-  const toggleColor = (color: string) => {
+  // [헬퍼 함수] 제형 문자열을 카테고리로 매핑
+  const mapFormToCategory = (formVal: string): string => {
+    if (typeOptions.includes(formVal)) return formVal;
+    if (formVal.includes('정')) return '정제';
+    if (formVal.includes('연질')) return '연질캡슐';
+    if (formVal.includes('캡슐')) return '경질캡슐';
+    return formVal;
+  };
+
+  // [통합 핸들러] 다중 선택 토글 로직
+  // limit: 0이면 무제한 선택
+  const toggleSelection = (
+    item: string,
+    currentList: string[],
+    setList: React.Dispatch<React.SetStateAction<string[]>>,
+    limit: number = 0
+  ) => {
     // 1. '전체'를 선택한 경우 -> 초기화
-    if (color === '전체') {
-      setSelectedColors(['전체']);
+    if (item === '전체') {
+      setList(['전체']);
       return;
     }
 
-    setSelectedColors((prev) => {
-      // '전체'가 선택되어 있었다면 제거하고 시작
-      let newColors = prev.filter((c) => c !== '전체');
+    // '전체'가 아닌 항목을 선택했을 때
+    let newList = currentList.filter((i) => i !== '전체');
 
-      if (newColors.includes(color)) {
-        // 이미 선택된 색상이면 제거
-        newColors = newColors.filter((c) => c !== color);
-      } else {
-        // 새로운 색상 추가 전 개수 확인
-        if (newColors.length >= 2) {
-          Alert.alert('알림', '색상은 최대 2개까지만 선택 가능합니다.');
-          return prev; // 변경 없음
-        }
-        newColors.push(color);
+    if (newList.includes(item)) {
+      // 이미 선택된 항목이면 제거
+      newList = newList.filter((i) => i !== item);
+    } else {
+      // 새로운 항목 추가 전 개수 제한 확인 (여기서는 모두 0으로 보내서 무제한)
+      if (limit > 0 && newList.length >= limit) {
+        Alert.alert('알림', `최대 ${limit}개까지만 선택 가능합니다.`);
+        return; 
       }
+      newList.push(item);
+    }
 
-      // 아무것도 선택 안 된 상태면 다시 '전체'로
-      if (newColors.length === 0) {
-        return ['전체'];
-      }
-
-      return newColors;
-    });
+    // 다 지워서 아무것도 없으면 '전체'로 복귀
+    if (newList.length === 0) {
+      setList(['전체']);
+    } else {
+      setList(newList);
+    }
   };
 
-  // 옵션 버튼 그룹 렌더링 함수 (단일 선택용: 모양, 제형)
-  const renderSingleSelectGroup = (
+  // 옵션 그룹 렌더링 함수
+  const renderOptionGroup = (
     label: string,
     options: string[],
-    selected: string,
-    setSelected: (v: string) => void,
+    currentList: string[],
+    setList: React.Dispatch<React.SetStateAction<string[]>>
   ) => (
     <View style={styles.groupContainer}>
-      <View
-        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
-      >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.label}> |</Text>
       </View>
 
       <View style={styles.optionContainer}>
-        {options.map((opt) => (
-          <TouchableOpacity
-            key={opt}
-            style={[styles.optionButton, selected === opt && styles.selected]}
-            onPress={() => setSelected(opt)}
-          >
-            <Text style={[
-              styles.optionText, 
-              selected === opt && styles.selectedText // 선택된 텍스트 스타일 추가
-            ]}>{opt}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+        {options.map((opt) => {
+          const isSelected = currentList.includes(opt);
+          // limit을 0으로 전달하여 모든 항목 무제한 선택 가능
+          const limit = 0; 
 
-  // [추가] 색상 전용 렌더링 그룹 (다중 선택 지원)
-  const renderColorGroup = () => (
-    <View style={styles.groupContainer}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        <Text style={styles.label}>색상</Text>
-        <Text style={styles.label}> | (최대 2개)</Text>
-      </View>
-
-      <View style={styles.optionContainer}>
-        {colorOptions.map((opt) => {
-          const isSelected = selectedColors.includes(opt);
           return (
             <TouchableOpacity
               key={opt}
               style={[styles.optionButton, isSelected && styles.selected]}
-              onPress={() => toggleColor(opt)}
+              onPress={() => toggleSelection(opt, currentList, setList, limit)}
             >
               <Text style={[
-                styles.optionText,
-                isSelected && styles.selectedText
+                styles.optionText, 
+                isSelected && styles.selectedText 
               ]}>{opt}</Text>
             </TouchableOpacity>
           );
@@ -184,15 +170,15 @@ export default function DirectSearchScreen() {
 
   // '검색하기' 버튼 핸들러 
   const handleSearch = () => {
-    // [변경] 색상 배열을 콤마로 합쳐서 문자열로 변환 (예: "빨강,하양")
-    const colorString = selectedColors.includes('전체') 
-      ? undefined 
-      : selectedColors.join(',');
+    // 배열을 콤마 문자열로 변환 ("전체"가 포함되어 있으면 undefined로 보냄)
+    const shapeStr = selectedShapes.includes('전체') ? undefined : selectedShapes.join(',');
+    const typeStr = selectedTypes.includes('전체') ? undefined : selectedTypes.join(',');
+    const colorStr = selectedColors.includes('전체') ? undefined : selectedColors.join(',');
 
     const searchQuery: SearchQuery = {
-      shape: shape === '전체' ? undefined : shape,
-      color: colorString, // 변환된 문자열 전달
-      form: type === '전체' ? undefined : type,
+      shape: shapeStr,
+      form: typeStr,
+      color: colorStr,
       imprint: identifier || undefined, 
       name: product || undefined,
       company: company || undefined,
@@ -220,12 +206,10 @@ export default function DirectSearchScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.outerBox}>
-          {/* 모양, 제형은 단일 선택 */}
-          {renderSingleSelectGroup('모양', shapeOptions, shape, setShape)}
-          {renderSingleSelectGroup('제형', typeOptions, type, setType)}
-          
-          {/* 색상은 다중 선택 (커스텀 렌더링) */}
-          {renderColorGroup()}
+          {/* 모든 그룹 무제한 다중 선택 적용 */}
+          {renderOptionGroup('모양', shapeOptions, selectedShapes, setSelectedShapes)}
+          {renderOptionGroup('제형', typeOptions, selectedTypes, setSelectedTypes)}
+          {renderOptionGroup('색상', colorOptions, selectedColors, setSelectedColors)}
 
           {(
             [
@@ -305,10 +289,10 @@ const styles = StyleSheet.create({
   selected: { 
     borderWidth: 2, 
     borderColor: '#409F82',
-    backgroundColor: '#E3F8F3' // 선택 시 배경색 살짝 변경
+    backgroundColor: '#E3F8F3'
   },
   optionText: { fontSize: 11, color: '#484848', fontWeight: '500' },
-  selectedText: { color: '#409F82', fontWeight: '700' }, // 선택 시 텍스트 진하게
+  selectedText: { color: '#409F82', fontWeight: '700' },
   inputGroup: { marginTop: 10 },
   input: {
     backgroundColor: 'white',

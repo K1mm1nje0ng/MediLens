@@ -49,10 +49,19 @@ def analyze_pill_colors(pill_image_without_bg):
         pixels = image_rgb.reshape(-1, 3)
 
         non_black_pixels = np.array([p for p in pixels if p.any()])
-        if len(non_black_pixels) < 100:
+        n_clusters_to_use = 5
+        
+        if non_black_pixels.size == 0:
             return [[0, 0, 0]], ["색상 분석 불가"]
+        
+        if len(non_black_pixels) < 100:
+            print(f"--- [Warn] 픽셀 수({len(non_black_pixels)}개)가 100개 미만입니다. K-Means 클러스터 수를 조절합니다.")
+            if len(non_black_pixels) < 5:
+                n_clusters_to_use = 1 # 5개 미만이면 클러스터를 1로 (평균색)
+            else:
+                n_clusters_to_use = 3 # 100개 미만 5개 이상이면 3으로 줄임
 
-        kmeans = KMeans(n_clusters=5, n_init='auto', random_state=42)
+        kmeans = KMeans(n_clusters=n_clusters_to_use, n_init='auto', random_state=42)
         kmeans.fit(non_black_pixels)
 
         unique_labels, counts = np.unique(kmeans.labels_, return_counts=True)

@@ -1,8 +1,6 @@
-// axios 인스턴스(client)는 이제 필요 없으므로 BASE_URL만 임포트합니다.
 import { BASE_URL } from './client'; 
 // 타입 임포트
 import { PillResultData, PillSearchSummary } from '../types/navigation';
-// react-native-image-picker의 Asset 타입
 import { Asset } from 'react-native-image-picker';
 
 // fetch 에러 핸들러
@@ -22,7 +20,7 @@ const handleApiResponse = async (response: Response) => {
   return response.json(); // 성공 시 JSON 파싱
 };
 
-// 이미지 분석 요청 (POST /predict) - (fetch로 변경됨)
+// 이미지 분석 요청 (POST /predict)
 export const postPredict = async (
   imageFile: Asset,
 ): Promise<{ task_id: string }> => {
@@ -30,8 +28,6 @@ export const postPredict = async (
   
   const formData = new FormData();
   
-  // React Native에서 FormData에 파일을 넣을 때는 객체 형태가 필요합니다.
-  // TypeScript 오류 방지를 위해 as any를 사용할 수도 있습니다.
   formData.append('file', {
     uri: imageFile.uri,
     type: imageFile.type || 'image/jpeg',
@@ -43,14 +39,12 @@ export const postPredict = async (
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
-    // 주의: fetch 사용 시 FormData 전송 헤더('Content-Type': 'multipart/form-data')는
-    // 절대로 직접 설정하면 안 됩니다. (Boundary가 누락되어 전송 실패함)
   });
 
   return handleApiResponse(response);
 };
 
-// 작업 상태 조회 (GET /status/:taskId) - (fetch 사용)
+// 작업 상태 조회 (GET /status/:taskId)
 export const getStatus = async (
   taskId: string,
 ): Promise<{ task_id: string; status: string }> => {
@@ -59,7 +53,7 @@ export const getStatus = async (
   return handleApiResponse(response);
 };
 
-// 작업 결과 조회 (GET /result/:taskId) - (fetch 사용)
+// 작업 결과 조회 (GET /result/:taskId)
 export const getResult = async (
   taskId: string,
 ): Promise<{ processedImage: string; resultGroups: PillSearchSummary[][] }> => {
@@ -83,7 +77,7 @@ export const getResult = async (
   };
 };
 
-// 실제 API: 정보 기반 검색 (GET /search) - (fetch 사용 + 페이지네이션)
+// 실제 API: 정보 기반 검색 (GET /search)
 export const postSearch = async (
   searchParams: any,
   page: number = 1, // page 파라미터 추가
@@ -121,7 +115,7 @@ export const postSearch = async (
 };
 
 
-// 알약 상세 정보 조회 (GET /detail) - (fetch 사용)
+// 알약 상세 정보 조회 (GET /detail)
 export const getDetail = async (
   pillId: string | number,
 ): Promise<PillResultData> => {
@@ -156,7 +150,7 @@ export const getDetail = async (
   };
 };
 
-// 최근 검색 기록 (GET /recent) - (fetch 사용)
+// 최근 검색 기록 (GET /recent) 
 export const getRecent = async (): Promise<PillSearchSummary[]> => {
   const url = `${BASE_URL}/recent`;
   const response = await fetch(url);

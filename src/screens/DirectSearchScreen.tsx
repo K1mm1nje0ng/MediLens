@@ -24,26 +24,26 @@ const colorOptions = [
   '파랑', '남색', '보라', '분홍', '갈색', '살구', '전체'
 ];
 
-// 이 스크린에서 사용할 네비게이션 prop 타입
+// 네비게이션 prop 타입
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DirectSearchScreen'
 >;
 
-// 이 스크린의 Route 타입
+// Route 타입
 type DirectSearchScreenRouteProp = RouteProp<
   RootStackParamList, 
   'DirectSearchScreen'
 >;
 
-// 알약 식별 정보(필터) 기반 직접 검색 화면
+// 알약 식별 정보 기반 직접 검색 화면
 export default function DirectSearchScreen() {
   // 네비게이션 훅
   const navigation = useNavigation<NavigationProp>();
   // 라우트 훅
   const route = useRoute<DirectSearchScreenRouteProp>();
 
-  // 모든 검색 조건 상태를 배열(Array)로 관리하여 다중 선택 지원
+  // 모든 검색 조건 상태를 배열로 관리하여 다중 선택 지원
   const [selectedShapes, setSelectedShapes] = useState<string[]>(['전체']);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['전체']);
   const [selectedColors, setSelectedColors] = useState<string[]>(['전체']);
@@ -86,7 +86,7 @@ export default function DirectSearchScreen() {
     }
   }, [route.params]);
 
-  // [헬퍼 함수] 제형 문자열을 카테고리로 매핑
+  // 제형 문자열을 카테고리로 매핑
   const mapFormToCategory = (formVal: string): string => {
     if (typeOptions.includes(formVal)) return formVal;
     if (formVal.includes('정')) return '정제';
@@ -95,7 +95,7 @@ export default function DirectSearchScreen() {
     return formVal;
   };
 
-  // [통합 핸들러] 다중 선택 토글 로직
+  // 다중 선택 토글 로직
   // limit: 0이면 무제한 선택
   const toggleSelection = (
     item: string,

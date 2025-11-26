@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // useState 임포트 추가
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -66,7 +66,7 @@ export default function ImageResultGroupScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         
         
-        {/* processed_image 섹션: 텍스트 제거 및 TouchableOpacity로 감싸기 */}
+        {/* processed_image 섹션 */}
         <TouchableOpacity
           style={styles.processedImageBox}
           onPress={() => setImageModalVisible(true)} // 이미지 탭 시 모달 열기

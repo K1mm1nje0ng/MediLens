@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // 타입 임포트
-import { RootStackParamList, PillResultData, SearchQuery } from '../types/navigation'; // SearchQuery 타입 추가 필요 (없으면 any로 해도 되지만 권장)
+import { RootStackParamList, PillResultData, SearchQuery } from '../types/navigation';
 // 아이콘 임포트
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -34,7 +34,7 @@ export default function ResultScreen({ route, navigation }: Props) {
     setIsImageLoading(false);
   };
 
-  // [추가됨] 수정하기 버튼 핸들러
+  // 수정하기 버튼 핸들러
   const handleEdit = () => {
     // 현재 결과 데이터를 검색 쿼리 포맷으로 변환
     const query: SearchQuery = {
@@ -180,7 +180,7 @@ export default function ResultScreen({ route, navigation }: Props) {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            {/* 닫기 버튼 (X 아이콘) */}
+            {/* 닫기 버튼 */}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setImageModalVisible(false)}

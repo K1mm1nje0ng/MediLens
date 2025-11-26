@@ -29,7 +29,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { getDetail, postSearch } from '../api/pillApi';
 import LoadingOverlay from '../components/LoadingOverlay'; 
 
-// 이 스크린에서 사용할 네비게이션과 라우트 prop 타입
+// 네비게이션과 라우트 prop 타입
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'SearchResultListScreen'
@@ -89,7 +89,7 @@ export default function SearchResultListScreen() {
     } else if (imageResults) {
       // '이미지 분석' (imageResults)으로 진입한 경우: 1D 배열을 results로 설정
       setResults(imageResults);
-      setTotalPages(1); // 이미지 검색은 페이지네이션이 없음
+      setTotalPages(1); // 이미지 검색은 페이지네이션 없음
     }
   }, [searchQuery, imageResults, loadSearchResults]); // 의존성 배열
 
@@ -110,9 +110,6 @@ export default function SearchResultListScreen() {
   
   // FlatList의 끝에 도달하면 이 함수가 호출됨
   const handleLoadMore = () => {
-    // - '직접 검색'일 때만
-    // - (page=1)이 (totalPages=60)보다 작고
-    // - (isListLoading=false) 현재 로딩 중이 아닐 때만!
     if (searchQuery && page < totalPages && !isListLoading) {
       // 'page + 1'로 다음 페이지 API 호출
       loadSearchResults(searchQuery, page + 1);
@@ -143,7 +140,7 @@ export default function SearchResultListScreen() {
     return <ActivityIndicator size="large" color="#409F82" style={{ marginVertical: 20 }} />;
   };
 
-  // (추가) FlatList의 '결과 없음' 렌더링
+  // FlatList의 '결과 없음' 렌더링
   const renderEmpty = () => {
     if (isListLoading) return null; // 초기 로딩 중에는 숨김
     return (

@@ -41,7 +41,7 @@ export type SearchQuery = {
 export type RootStackParamList = {
   PillSearchScreen: undefined;
   
-  // [수정됨] 수정 기능을 위해 파라미터를 받을 수 있게 설정했습니다.
+  // 수정 기능을 위해 파라미터를 받을 수 있게 설정
   DirectSearchScreen: { initialQuery?: SearchQuery } | undefined;
   
   // 이미지 분석 결과 화면

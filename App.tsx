@@ -19,7 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function App(): React.JSX.Element {
   return (
-    // 네비게이션 컨테이너: 전체 앱을 네비게이션 구조로 감쌈
+    // 네비게이션 컨테이너
     <NavigationContainer>
       {/* 상태 표시줄 설정 */}
       <StatusBar
@@ -44,7 +44,7 @@ function App(): React.JSX.Element {
           options={{ headerShown: false }}
         />
 
-        {/* 이미지 분석 결과 (알약 그룹 목록) */}
+        {/* 이미지 분석 결과 */}
         <Stack.Screen
           name="ImageResultGroupScreen"
           component={ImageResultGroupScreen}

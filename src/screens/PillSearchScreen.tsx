@@ -40,7 +40,7 @@ interface ImageAsset {
   type?: string;
 }
 
-// 이 스크린에서 사용할 네비게이션 prop 타입
+// 네비게이션 prop 타입
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'PillSearchScreen'

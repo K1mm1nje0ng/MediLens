@@ -12,7 +12,8 @@ color_dict_rgb = {
     '하양': [255, 255, 255],  '검정': [0, 0, 0],        '회색': [149, 165, 166],
     '빨강': [231, 76, 60],    '주황': [230, 126, 34],   '노랑': [241, 196, 15],
     '초록': [39, 174, 96],    '파랑': [52, 152, 219],   '남색': [0, 0, 128],
-    '보라': [142, 68, 173],   '분홍': [218, 132, 136],  '갈색': [160, 82, 45], '살구': [240, 190, 160]
+    '보라': [142, 68, 173],   '분홍': [218, 132, 136],  '갈색': [160, 82, 45],
+    '살구': [240, 190, 160],  '적갈색': [80, 30, 25]
 }
 
 # 모든 기준 색상의 LAB 값을 미리 계산하여 성능을 최적화합니다.
@@ -36,6 +37,10 @@ def map_rgb_to_color_name(rgb_color):
         if dist < min_dist:
             min_dist = dist
             closest_color = name
+
+    if closest_color == '적갈색':
+        return '갈색'
+
     return closest_color
 
 
@@ -48,7 +53,8 @@ def analyze_pill_colors(pill_image_without_bg):
         image_rgb = cv2.cvtColor(pill_image_without_bg, cv2.COLOR_BGR2RGB)
         pixels = image_rgb.reshape(-1, 3)
 
-        non_black_pixels = np.array([p for p in pixels if p.any()])
+        brightness_threshold = 30
+        non_black_pixels = np.array([p for p in pixels if np.mean(p) > brightness_threshold])
         n_clusters_to_use = 5
         
         if non_black_pixels.size == 0:

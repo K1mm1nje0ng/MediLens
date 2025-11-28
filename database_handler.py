@@ -208,5 +208,5 @@ def find_best_match(pill_db, identified_shape_info, identified_colors, identifie
 
     candidates.sort(key=lambda x: x['score'], reverse=True)
 
-    # 점수가 0점 초과인 후보만 5개까지 반환
-    return [c for c in candidates if c['score'] > 0][:5]
+    # 점수가 0점 초과인 후보만 10개까지 반환
+    return [c for c in candidates if c['score'] > 0][:10]
